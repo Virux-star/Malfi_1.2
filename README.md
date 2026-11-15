@@ -1,6 +1,6 @@
 # MALFI · Tienda online
 
-Velas aromáticas de cera de soja y decoración artesanal de cemento.
+Velas aromáticas de cera de soja y decoración artesanal de concreto.
 
 El proyecto está preparado para instalarlo y publicarlo como una aplicación completa: React + Vite en el frontend, Express y PostgreSQL en el backend. Express sirve también el frontend compilado, con un único dominio para tienda, API y administración.
 
@@ -8,7 +8,7 @@ El proyecto está preparado para instalarlo y publicarlo como una aplicación co
 
 ## Qué incluye
 
-- Catálogo real desde PostgreSQL; categorías fijas: Velas de soja, Set de velas, Decoración de cemento, Talleres e Insumos.
+- Catálogo real desde PostgreSQL; categorías fijas: Velas de soja, Set de velas, Decoración de concreto, Talleres e Insumos.
 - Detalle de producto, disponibilidad descontando reservas, carrito persistente y validación de precios y stock en el servidor.
 - Checkout con destinos habilitados, tarifa y plazo de entrega antes de pagar, aceptación de condiciones y control de pedidos duplicados.
 - Webpay Plus para clientes: integración y producción, comprobante privado, autorización validada contra monto y referencias, conciliación y protección frente a retornos repetidos.

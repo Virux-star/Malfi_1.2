@@ -377,7 +377,7 @@ app.post(
 
       const categories = [
         "Velas de soja",
-        "Decoración de cemento",
+        "Decoración de concreto",
         "Set de velas",
         "Talleres",
         "Insumos"
@@ -1051,7 +1051,7 @@ app.put(
 
     const categories = [
       "Velas de soja",
-      "Decoración de cemento",
+      "Decoración de concreto",
       "Set de velas",
       "Talleres",
       "Insumos"

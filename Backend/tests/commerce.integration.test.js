@@ -25,7 +25,7 @@ test('recorrido de compra y administración con PostgreSQL real y banco simulado
   try{
     await migrate(pool);await migrate(pool);
     await pool.query('TRUNCATE order_email_outbox,webpay_payments,order_items,webpay_test_attempts,mercado_pago_attempts,orders,products,shipping_rates_comunas,store_settings,admin_sessions,admin_users RESTART IDENTITY CASCADE');
-    await pool.query("INSERT INTO products(name,description,price,category,stock) VALUES('Vela de soja','Vela aromática de cera de soja',10000,'Velas de soja',20),('Pieza de cemento','Decoración',7000,'Decoración de cemento',1)");
+    await pool.query("INSERT INTO products(name,description,price,category,stock) VALUES('Vela de soja','Vela aromática de cera de soja',10000,'Velas de soja',20),('Pieza de concreto','Decoración',7000,'Decoración de concreto',1)");
     await pool.query("INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,active,delivery_days_min,delivery_days_max,santiago_coverage,verified_at) VALUES('Metropolitana de Santiago','Las Condes','Paket',3500,TRUE,1,3,TRUE,now()),('Metropolitana de Santiago','Melipilla','Blue Express',6500,TRUE,3,5,FALSE,now())");
     const business={legalName:'Tienda de pruebas',rut:'76.123.456-0',legalAddress:'Dirección ficticia QA',email:'store@example.test',phone:'+56912345678',preparationDays:2,policiesVersion:'qa-v1',returnsInstructions:'Contactar al negocio'};
     await pool.query("INSERT INTO store_settings(key,value) VALUES('business',$1)",[business]);

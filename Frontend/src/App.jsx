@@ -43,7 +43,7 @@ function HomePage() {
         <Hero />
 
         <ProductCatalog />
-        <section className="store-details" aria-label="Comprar en MALFI"><div><h3>Hecho a mano</h3><p>Cera de soja, aromas y piezas de cemento que acompañan tus espacios.</p></div><div><h3>Desde Las Condes</h3><p>Despachos con Paket en la cobertura de Santiago y Blue Express a otros destinos habilitados.</p><a className="text-link" href="/despachos">Conocer los despachos</a></div><div><h3>Compra con tranquilidad</h3><p>Conoce las condiciones de compra, el retracto y la garantía legal antes de elegir.</p><a className="text-link" href="/terminos">Cambios y devoluciones</a></div></section>
+        <section className="store-details" aria-label="Comprar en MALFI"><div><h3>Hecho a mano</h3><p>Cera de soja, aromas y piezas de concreto que acompañan tus espacios.</p></div><div><h3>Desde Las Condes</h3><p>Despachos con Paket en la cobertura de Santiago y Blue Express a otros destinos habilitados.</p><a className="text-link" href="/despachos">Conocer los despachos</a></div><div><h3>Compra con tranquilidad</h3><p>Conoce las condiciones de compra, el retracto y la garantía legal antes de elegir.</p><a className="text-link" href="/terminos">Cambios y devoluciones</a></div></section>
 
         <section
           id="nosotros"
@@ -57,7 +57,7 @@ function HomePage() {
 
           <p style={{ marginTop: 20 }}>
             Velas aromáticas de cera de soja
-            y decoración artesanal de cemento.
+            y decoración artesanal de concreto.
           </p>
         </section>
 

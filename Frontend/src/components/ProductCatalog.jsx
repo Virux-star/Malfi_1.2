@@ -22,7 +22,7 @@ function ProductCatalog() {
     "Todos",
     "Velas de soja",
     "Set de velas",
-    "Decoración de cemento",
+    "Decoración de concreto",
     "Talleres",
     "Insumos",
   ];

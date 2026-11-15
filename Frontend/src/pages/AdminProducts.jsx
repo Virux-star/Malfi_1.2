@@ -144,8 +144,8 @@ function AdminProducts() {
               Velas de soja
             </option>
 
-            <option value="Decoración de cemento">
-              Decoración de cemento
+            <option value="Decoración de concreto">
+              Decoración de concreto
             </option>
 
             <option value="Set de velas">
