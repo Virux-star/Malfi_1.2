@@ -1,0 +1,145 @@
+/* ==================================
+   NAVBAR MALFI
+================================== */
+
+.navbar {
+  width: 100%;
+  background-color: #faf8f5;
+  border-bottom: 1px solid #e9dfd1;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 5%;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* LOGO */
+
+.navbar-logo {
+  font-family: Georgia, serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: 5px;
+  color: #49382e;
+}
+
+/* ENLACES */
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.navbar-links a {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: #49382e;
+  transition: color 0.3s ease;
+}
+
+.navbar-links a:hover {
+  color: #92745f;
+}
+
+/* CARRITO */
+
+.navbar-cart {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: #49382e;
+}
+
+.navbar-cart:hover {
+  color: #92745f;
+}
+
+.cart-count {
+  position: absolute;
+  top: -9px;
+  right: -10px;
+
+  background-color: #92745f;
+  color: white;
+
+  font-size: 10px;
+  width: 17px;
+  height: 17px;
+
+  border-radius: 50%;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* BOTÓN MENÚ MÓVIL */
+
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 26px;
+  color: #49382e;
+  cursor: pointer;
+}
+
+/* ==================================
+   RESPONSIVE
+================================== */
+
+@media (max-width: 768px) {
+
+  .navbar-container {
+    padding: 16px 5%;
+  }
+
+  .navbar-logo {
+    font-size: 26px;
+  }
+
+  .menu-toggle {
+    display: block;
+    order: 3;
+  }
+
+  .navbar-cart {
+    margin-left: auto;
+    order: 2;
+  }
+
+  .navbar-links {
+    display: none;
+
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+
+    background-color: #faf8f5;
+    padding: 30px 20px;
+
+    border-bottom: 1px solid #e9dfd1;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  .navbar-links.active {
+    display: flex;
+  }
+
+}

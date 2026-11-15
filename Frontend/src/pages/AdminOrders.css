@@ -1,0 +1,356 @@
+
+.orders-admin {
+  min-height: 100vh;
+  padding: 60px 5%;
+  background: #faf8f5;
+  color: #49382e;
+}
+
+.orders-admin-header {
+  text-align: center;
+  margin-bottom: 35px;
+}
+
+.orders-admin-header span {
+  color: #92745f;
+  font-size: 11px;
+  letter-spacing: 3px;
+}
+
+.orders-admin-header h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 400;
+  margin: 15px 0;
+}
+
+.orders-admin-header p,
+.orders-admin-count {
+  color: #75675d;
+  font-size: 14px;
+}
+
+.orders-admin-nav {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  flex-wrap: wrap;
+  margin-bottom: 45px;
+}
+
+.orders-admin-nav a {
+  color: #49382e;
+  font-size: 14px;
+}
+
+.orders-admin-nav a:hover {
+  color: #92745f;
+}
+
+.orders-admin-access {
+  max-width: 600px;
+  margin: 0 auto 45px;
+}
+
+.orders-admin-access label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.orders-admin-access-row {
+  display: flex;
+  gap: 10px;
+}
+
+.orders-admin-access input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d8c9b9;
+  background: white;
+  color: #49382e;
+}
+
+.orders-admin-access button {
+  padding: 14px 20px;
+  border: none;
+  background: #49382e;
+  color: white;
+}
+
+.orders-admin-access button:disabled {
+  opacity: 0.5;
+}
+
+.orders-admin-error {
+  color: #a04f42;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.orders-admin-layout {
+  max-width: 1250px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 1.4fr);
+  gap: 30px;
+  align-items: start;
+}
+
+.orders-admin-list h2,
+.orders-admin-detail h2 {
+  font-family: Georgia, serif;
+  font-size: 27px;
+  font-weight: 400;
+  margin-bottom: 20px;
+}
+
+/* TARJETAS */
+
+.orders-admin-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: white;
+  border: 1px solid #e9dfd1;
+  padding: 20px;
+  margin: 15px 0;
+  color: #49382e;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.orders-admin-card:hover,
+.orders-admin-card:focus-visible {
+  border-color: #92745f;
+}
+
+.orders-admin-card-top,
+.orders-admin-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.orders-admin-card-top {
+  margin-bottom: 15px;
+}
+
+.orders-admin-card p {
+  font-size: 13px;
+  color: #75675d;
+  margin: 8px 0;
+}
+
+.orders-admin-card-bottom {
+  margin-top: 18px;
+  align-items: center;
+  font-size: 12px;
+  color: #92745f;
+}
+
+/* DETALLE */
+
+.orders-admin-detail {
+  background: #f1eae2;
+  padding: 30px;
+}
+
+.orders-admin-detail-content h3 {
+  font-family: Georgia, serif;
+  font-size: 25px;
+  font-weight: 400;
+  margin: 20px 0;
+}
+
+.orders-admin-detail-content h4 {
+  margin: 30px 0 15px;
+  font-size: 15px;
+}
+
+.orders-admin-detail-content p {
+  margin: 9px 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.orders-admin-product,
+.orders-admin-total-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px 0;
+  border-bottom: 1px solid #d8c9b9;
+  font-size: 14px;
+}
+
+.orders-admin-product p {
+  color: #75675d;
+  font-size: 12px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 800px) {
+  .orders-admin-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .orders-admin {
+    padding: 35px 5%;
+  }
+
+  .orders-admin-access-row {
+    flex-direction: column;
+  }
+
+  .orders-admin-detail {
+    padding: 20px;
+  }
+}
+
+/* ADMINISTRACIÓN DE ESTADOS */
+
+.orders-admin-action {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 15px 20px;
+  border: none;
+  background-color: #49382e;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.orders-admin-action:hover {
+  background-color: #92745f;
+}
+
+.orders-admin-action.cancel {
+  background-color: transparent;
+  color: #9b4b40;
+  border: 1px solid #9b4b40;
+}
+
+.orders-admin-action.cancel:hover {
+  background-color: #f7e8e5;
+}
+
+.orders-admin-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.orders-admin-notice {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #75675d;
+  margin-top: 15px;
+}
+
+.orders-admin-success {
+  padding: 15px;
+  margin-top: 20px;
+  background-color: #e8efe5;
+  color: #47704e;
+}
+
+/* MERCADO PAGO - PRUEBAS */
+
+.mp-test-section {
+  margin-top: 35px;
+  padding: 25px;
+  border: 1px solid #d8c9b9;
+  background: #faf8f5;
+}
+
+.mp-test-section h4 {
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  margin-bottom: 15px;
+}
+
+.mp-test-section p {
+  color: #75675d;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.mp-test-button,
+.mp-test-link {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  margin-top: 20px;
+  background-color: #49382e;
+  color: white;
+  text-align: center;
+  border: none;
+  font-size: 13px;
+}
+
+.mp-test-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mp-test-link {
+  background-color: #92745f;
+}
+
+.mp-test-link:hover {
+  color: white;
+}
+
+.admin-webpay-review {
+  margin-top: 30px;
+  padding: 24px;
+  background: #faf8f5;
+  border: 1px solid #e9dfd1;
+  color: #49382e;
+}
+
+.admin-webpay-review h3 {
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-weight: normal;
+  margin-bottom: 20px;
+}
+
+.admin-webpay-review p {
+  margin: 12px 0;
+  line-height: 1.6;
+}
+
+.admin-pending-reservations {
+  margin: 30px 0;
+  padding: 24px;
+  background: #faf8f5;
+  border: 1px solid #e9dfd1;
+  border-radius: 8px;
+  color: #49382e;
+}
+
+.admin-pending-list {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.admin-pending-card {
+  padding: 18px;
+  background: white;
+  border: 1px solid #e9dfd1;
+  border-radius: 8px;
+}
+
+.admin-pending-card h3 {
+  margin-top: 0;
+  font-family: Georgia, serif;
+}

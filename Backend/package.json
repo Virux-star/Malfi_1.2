@@ -1,0 +1,40 @@
+{
+  "name": "malfi-backend",
+  "version": "2.1.0",
+  "description": "Tienda MALFI: catálogo, pedidos, Webpay y administración",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "db:migrate": "node scripts/migrate.js",
+    "admin:create": "node scripts/createAdmin.js",
+    "check:production": "node scripts/checkProduction.js",
+    "admin:reset": "node scripts/createAdmin.js --reset-password",
+    "mp:check": "node scripts/checkMercadoPago.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@inquirer/prompts": "^8.7.5",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
+    "connect-pg-simple": "^10.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
+    "express-session": "^1.19.0",
+    "file-type": "^22.3.0",
+    "mercadopago": "^3.6.2",
+    "multer": "^2.5.0",
+    "pg": "^8.23.1",
+    "resend": "^6.38.1",
+    "transbank-sdk": "^6.1.1"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

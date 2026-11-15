@@ -1,0 +1,21 @@
+{
+  "name": "malfi-store",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "setup": "npm --prefix Backend ci --omit=dev && npm --prefix Frontend ci --include=dev",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm --prefix Frontend run build",
+    "start": "node --env-file-if-exists=Backend/.env Backend/server.js",
+    "db:migrate": "node --env-file-if-exists=Backend/.env Backend/scripts/migrate.js",
+    "admin:create": "npm --prefix Backend run admin:create",
+    "check:production": "node --env-file-if-exists=Backend/.env Backend/scripts/checkProduction.js",
+    "test": "npm --prefix Backend test",
+    "admin:reset": "npm --prefix Backend run admin:reset",
+    "mp:check": "node --env-file-if-exists=Backend/.env Backend/scripts/checkMercadoPago.js"
+  }
+}

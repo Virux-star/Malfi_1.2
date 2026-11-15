@@ -1,0 +1,483 @@
+
+import { useEffect, useRef, useState } from "react";
+import "./AdminProductManager.css";
+
+import { API_URL } from "../lib/api";
+
+const formatPrice = (price) =>
+  new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0
+  }).format(price);
+
+function AdminProductManager() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [editingId, setEditingId] = useState(null);
+  const [currentImage, setCurrentImage] = useState("");
+  const [newImage, setNewImage] = useState(null);
+
+  const [saving, setSaving] = useState(false);
+  const [changingId, setChangingId] = useState(null);
+
+  const fileInputRef = useRef(null);
+  const editSectionRef = useRef(null);
+
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    price: "",
+    category: "Velas de soja",
+    stock: ""
+  });
+
+  // Obtener todos los productos, incluidos los ocultos
+  async function loadProducts() {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/products`,
+        {
+          credentials: "include"
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "No se pudieron cargar los productos."
+        );
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error("Respuesta de productos no válida.");
+      }
+
+      setProducts(data);
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  // Preparar el formulario de edición
+  function startEditing(product) {
+    setEditingId(product.id);
+
+    setForm({
+      name: product.name,
+      description: product.description || "",
+      price: String(product.price),
+      category: product.category,
+      stock: String(product.stock)
+    });
+
+    setCurrentImage(product.image_url || "");
+    setNewImage(null);
+    setMessage("");
+    setError("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    requestAnimationFrame(() => {
+      editSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    });
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setNewImage(null);
+    setCurrentImage("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+
+    setForm((previous) => ({
+      ...previous,
+      [name]: value
+    }));
+  }
+
+  // Guardar cambios
+  async function handleSave(event) {
+    event.preventDefault();
+
+    if (editingId === null || saving) return;
+
+    if (newImage && newImage.size > 5 * 1024 * 1024) {
+      setError("La fotografía no puede superar los 5 MB.");
+      return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("name", form.name);
+    formData.append("description", form.description);
+    formData.append("price", form.price);
+    formData.append("category", form.category);
+    formData.append("stock", form.stock);
+
+    // Enviar imagen solamente si seleccionó una nueva
+    if (newImage) {
+      formData.append("image", newImage);
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/products/${editingId}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          body: formData
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "No se pudo actualizar el producto."
+        );
+      }
+
+      cancelEditing();
+
+      setMessage("¡Producto actualizado correctamente!");
+
+      await loadProducts();
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Ocultar o volver a publicar
+  async function changeStatus(product) {
+    const nextActive = !product.active;
+
+    if (!nextActive) {
+      const confirmed = window.confirm(
+        `¿Quieres ocultar "${product.name}" de la tienda?`
+      );
+
+      if (!confirmed) return;
+    }
+
+    setChangingId(product.id);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/products/${product.id}/status`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            active: nextActive
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "No se pudo cambiar el estado."
+        );
+      }
+
+      setMessage(data.message);
+      await loadProducts();
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setChangingId(null);
+    }
+  }
+
+  return (
+    <section className="admin-product-manager">
+
+      <div className="manager-heading">
+        <div>
+          <span>MALFI · INVENTARIO</span>
+          <h2>Mis productos</h2>
+          <p>
+            Edita los productos publicados y administra
+            su disponibilidad.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="manager-refresh"
+          onClick={loadProducts}
+          disabled={loading}
+        >
+          Actualizar lista
+        </button>
+      </div>
+
+      {message && (
+        <p className="manager-success" role="status">
+          {message}
+        </p>
+      )}
+
+      {error && (
+        <p className="manager-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {/* FORMULARIO DE EDICIÓN */}
+      {editingId !== null && (
+        <div
+          className="manager-edit"
+          ref={editSectionRef}
+        >
+          <h3>Editar producto #{editingId}</h3>
+
+          <form
+            className="manager-edit-form"
+            onSubmit={handleSave}
+          >
+            <label>
+              Nombre
+              <input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                maxLength={150}
+                required
+              />
+            </label>
+
+            <label>
+              Descripción
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                maxLength={2000}
+                rows={4}
+              />
+            </label>
+
+            <div className="manager-form-row">
+              <label>
+                Precio (CLP)
+                <input
+                  type="number"
+                  name="price"
+                  value={form.price}
+                  onChange={handleChange}
+                  min="1"
+                  step="1"
+                  required
+                />
+              </label>
+
+              <label>
+                Stock
+                <input
+                  type="number"
+                  name="stock"
+                  value={form.stock}
+                  onChange={handleChange}
+                  min="0"
+                  step="1"
+                  required
+                />
+              </label>
+            </div>
+
+              <label>
+                Categoría
+                <select
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                >
+                  <option value="Velas de soja">
+                    Velas de soja
+                  </option>
+
+                  <option value="Decoración de cemento">
+                    Decoración de cemento
+                  </option>
+                  <option value="Set de velas">
+                    Set de velas
+                  </option>
+                </select>
+              </label>
+
+            <div className="manager-photo-field">
+              <p>Fotografía actual</p>
+
+              {currentImage ? (
+                <img
+                  src={currentImage}
+                  alt="Fotografía actual del producto"
+                />
+              ) : (
+                <p>Sin fotografía</p>
+              )}
+            </div>
+
+            <label>
+              Reemplazar fotografía (opcional)
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) =>
+                  setNewImage(event.target.files[0] || null)
+                }
+              />
+            </label>
+
+            <p className="manager-help">
+              Si no seleccionas otra fotografía, se
+              conservará la imagen actual.
+            </p>
+
+            <div className="manager-actions">
+              <button
+                type="submit"
+                disabled={saving}
+                className="manager-save"
+              >
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </button>
+
+              <button
+                type="button"
+                className="manager-cancel"
+                onClick={cancelEditing}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* LISTA DE PRODUCTOS */}
+      {loading && (
+        <p role="status">Cargando productos...</p>
+      )}
+
+      {!loading && products.length === 0 && (
+        <p>Todavía no hay productos registrados.</p>
+      )}
+
+      {!loading && (
+        <div className="manager-products-grid">
+          {products.map((product) => (
+            <article
+              key={product.id}
+              className="manager-product-card"
+            >
+              <div className="manager-product-image">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    loading="lazy"
+                  />
+                ) : (
+                  <span>MALFI</span>
+                )}
+              </div>
+
+              <div className="manager-product-info">
+
+                <span className={
+                  product.active
+                    ? "manager-status active"
+                    : "manager-status inactive"
+                }>
+                  {product.active ? "Publicado" : "Oculto"}
+                </span>
+
+                <h3>{product.name}</h3>
+
+                <p>{product.category}</p>
+
+                <strong>
+                  {formatPrice(product.price)}
+                </strong>
+
+                <p>Stock: {product.stock}</p>
+
+                <div className="manager-card-buttons">
+                  <button
+                    type="button"
+                    className="manager-edit-button"
+                    onClick={() => startEditing(product)}
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="manager-status-button"
+                    disabled={changingId === product.id}
+                    onClick={() => changeStatus(product)}
+                  >
+                    {changingId === product.id
+                      ? "Guardando..."
+                      : product.active
+                        ? "Ocultar"
+                        : "Reactivar"}
+                  </button>
+                </div>
+
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+    </section>
+  );
+}
+
+export default AdminProductManager;

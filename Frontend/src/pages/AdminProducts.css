@@ -1,0 +1,66 @@
+.admin-products {
+  max-width: 650px;
+  margin: 60px auto;
+  padding: 30px;
+  color: #49382e;
+}
+
+.admin-products h1 {
+  font-family: Georgia, serif;
+  font-size: 36px;
+  margin-bottom: 15px;
+}
+
+.admin-products > p {
+  margin-bottom: 30px;
+  color: #92745f;
+}
+
+.admin-products form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-products label {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.admin-products input,
+.admin-products textarea,
+.admin-products select {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #e9dfd1;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #49382e;
+  font-family: inherit;
+}
+
+.admin-products input:focus,
+.admin-products textarea:focus,
+.admin-products select:focus {
+  outline: 1px solid #92745f;
+}
+
+.admin-products button {
+  padding: 16px;
+  background-color: #49382e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.admin-products button:hover {
+  background-color: #92745f;
+}
+
+.admin-products button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

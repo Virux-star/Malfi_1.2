@@ -1,0 +1,255 @@
+
+/* ADMINISTRADOR DE PRODUCTOS MALFI */
+
+.admin-product-manager {
+  margin-top: 90px;
+  padding-top: 50px;
+  border-top: 1px solid #d8c9b9;
+  color: #49382e;
+}
+
+.manager-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 35px;
+}
+
+.manager-heading span {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #92745f;
+}
+
+.manager-heading h2 {
+  font-family: Georgia, serif;
+  font-size: 32px;
+  font-weight: 400;
+  margin: 12px 0;
+}
+
+.manager-heading p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #75675d;
+}
+
+.manager-refresh {
+  background: transparent;
+  color: #49382e;
+  border: 1px solid #92745f;
+  padding: 12px 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* MENSAJES */
+
+.manager-success {
+  background: #e8efe5;
+  color: #47704e;
+  padding: 15px;
+  margin-bottom: 25px;
+}
+
+.manager-error {
+  background: #f7e8e5;
+  color: #a04f42;
+  padding: 15px;
+  margin-bottom: 25px;
+}
+
+/* TARJETAS */
+
+.manager-products-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.manager-product-card {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid #e9dfd1;
+  overflow: hidden;
+}
+
+.manager-product-image {
+  aspect-ratio: 4 / 3;
+  background: #e9dfd1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manager-product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.manager-product-info {
+  padding: 22px;
+}
+
+.manager-product-info h3 {
+  font-family: Georgia, serif;
+  font-size: 21px;
+  font-weight: 400;
+  margin: 12px 0;
+}
+
+.manager-product-info p {
+  color: #75675d;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.manager-product-info strong {
+  display: block;
+  font-size: 17px;
+  margin: 12px 0;
+}
+
+.manager-status {
+  display: inline-block;
+  padding: 7px 12px;
+  font-size: 11px;
+}
+
+.manager-status.active {
+  background: #e8efe5;
+  color: #47704e;
+}
+
+.manager-status.inactive {
+  background: #f1eae2;
+  color: #92745f;
+}
+
+.manager-card-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.manager-card-buttons button {
+  flex: 1;
+  padding: 12px;
+  font-size: 13px;
+  border: 1px solid #49382e;
+  cursor: pointer;
+}
+
+.manager-edit-button {
+  background: #49382e;
+  color: white;
+}
+
+.manager-status-button {
+  background: transparent;
+  color: #49382e;
+}
+
+/* FORMULARIO EDITAR */
+
+.manager-edit {
+  background: #f1eae2;
+  padding: 30px;
+  margin-bottom: 40px;
+  scroll-margin-top: 110px;
+}
+
+.manager-edit h3 {
+  font-family: Georgia, serif;
+  font-size: 25px;
+  font-weight: 400;
+  margin-bottom: 25px;
+}
+
+.manager-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.manager-edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.manager-edit-form input,
+.manager-edit-form textarea,
+.manager-edit-form select {
+  width: 100%;
+  padding: 13px;
+  background: white;
+  border: 1px solid #d8c9b9;
+  color: #49382e;
+  font-family: inherit;
+}
+
+.manager-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.manager-photo-field img {
+  display: block;
+  width: 160px;
+  height: 190px;
+  object-fit: cover;
+  margin-top: 12px;
+}
+
+.manager-help {
+  font-size: 12px;
+  color: #75675d;
+}
+
+.manager-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.manager-actions button {
+  padding: 14px 20px;
+  border: 1px solid #49382e;
+  cursor: pointer;
+}
+
+.manager-save {
+  background: #49382e;
+  color: white;
+}
+
+.manager-cancel {
+  background: transparent;
+  color: #49382e;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 700px) {
+  .manager-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .manager-products-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-edit {
+    padding: 20px;
+  }
+}

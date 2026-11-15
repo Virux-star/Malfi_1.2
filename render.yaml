@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: malfi-tienda
+    runtime: node
+    plan: 0.5c-512mb
+    region: virginia
+    buildCommand: npm run setup && npm run build
+    startCommand: node scripts/start.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: malfi-db
+          property: connectionString
+      - key: DB_SSL
+        value: "false"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ORDER_TOKEN_SECRET
+        generateValue: true
+      - key: ALLOW_INTEGRATION_CHECKOUT
+        value: "false"
+      - key: WEBPAY_TEST_MODE
+        value: "false"
+      - key: MP_TEST_MODE
+        value: "false"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+databases:
+  - name: malfi-db
+    databaseName: malfi
+    user: malfi
+    plan: 0.1c-256mb
+    diskSizeGB: 1
+    region: virginia
+    postgresMajorVersion: '18'
+    ipAllowList: []
