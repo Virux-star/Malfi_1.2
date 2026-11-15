@@ -151,6 +151,12 @@ function AdminProducts() {
             <option value="Set de velas">
               Set de velas
             </option>
+            <option value="Talleres">
+              Talleres
+            </option>
+            <option value="Insumos">
+              Insumos
+            </option>
           </select>
         </label>
 

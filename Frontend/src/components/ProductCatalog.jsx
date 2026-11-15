@@ -23,6 +23,8 @@ function ProductCatalog() {
     "Velas de soja",
     "Set de velas",
     "Decoración de cemento",
+    "Talleres",
+    "Insumos",
   ];
 
   // Obtener productos desde nuestro backend

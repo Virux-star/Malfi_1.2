@@ -378,7 +378,9 @@ app.post(
       const categories = [
         "Velas de soja",
         "Decoración de cemento",
-        "Set de velas"
+        "Set de velas",
+        "Talleres",
+        "Insumos"
       ];
 
       // Validar nombre
@@ -1050,7 +1052,9 @@ app.put(
     const categories = [
       "Velas de soja",
       "Decoración de cemento",
-      "Set de velas"
+      "Set de velas",
+      "Talleres",
+      "Insumos"
     ];
 
     if (!name || name.length > 150) {

@@ -8,7 +8,7 @@ El proyecto está preparado para instalarlo y publicarlo como una aplicación co
 
 ## Qué incluye
 
-- Catálogo real desde PostgreSQL; categorías fijas: Velas de soja, Set de velas y Decoración de cemento.
+- Catálogo real desde PostgreSQL; categorías fijas: Velas de soja, Set de velas, Decoración de cemento, Talleres e Insumos.
 - Detalle de producto, disponibilidad descontando reservas, carrito persistente y validación de precios y stock en el servidor.
 - Checkout con destinos habilitados, tarifa y plazo de entrega antes de pagar, aceptación de condiciones y control de pedidos duplicados.
 - Webpay Plus para clientes: integración y producción, comprobante privado, autorización validada contra monto y referencias, conciliación y protección frente a retornos repetidos.
