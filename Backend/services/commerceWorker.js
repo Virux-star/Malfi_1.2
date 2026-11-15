@@ -1,5 +1,6 @@
 import { reconcileMpCheckout } from './mercadoPago.js';
 import { Resend } from 'resend';
+import { compactOrderEmail } from './compactOrderEmail.js';
 import { reconcilePayment, releaseExpiredOrders, orderToken } from './payments.js';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clp=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(n));
@@ -33,7 +34,7 @@ export async function sendEmailsOnce(pool,config,provider) {
   // Uncertain sends can be retried with the same provider key for up to 24h.
   await pool.query(`UPDATE order_email_outbox SET status='queued',next_attempt_at=now() WHERE status='sending' AND started_at<now()-interval '10 minutes' AND started_at>now()-interval '23 hours' AND attempts<5`);
   await pool.query(`UPDATE order_email_outbox SET status='needs_review' WHERE status IN ('sending','queued') AND attempts>0 AND started_at<now()-interval '23 hours'`);
-  const rows=(await pool.query(`SELECT e.order_id,e.kind FROM order_email_outbox e JOIN orders o ON o.id=e.order_id
+  const rows=(await pool.query(`SELECT e.order_id,e.kind,e.template_version FROM order_email_outbox e JOIN orders o ON o.id=e.order_id
     WHERE e.status='queued' AND e.next_attempt_at<=now() AND e.attempts<5 AND o.payment_status='paid' AND o.status<>'payment_review'
       AND o.checkout_key IS NOT NULL AND o.stock_deducted_at IS NOT NULL AND o.inventory_reserved=FALSE
       AND o.payment_mode=$1 ORDER BY e.created_at LIMIT 20`,[config.emailMode==='production'?'production':'integration'])).rows;
@@ -45,7 +46,9 @@ export async function sendEmailsOnce(pool,config,provider) {
       const items=(await pool.query('SELECT * FROM order_items WHERE order_id=$1 ORDER BY id',[r.order_id])).rows;
       const to=config.emailMode==='test'?process.env.EMAIL_TEST_TO:r.kind==='admin_new_order'?process.env.ADMIN_EMAIL:order.customer_email;
       if(!to)throw new Error('Destinatario no configurado.');
-      const result=await resend.emails.send({from:config.emailMode==='test'?'MALFI Pruebas <onboarding@resend.dev>':process.env.EMAIL_FROM,to:[to],replyTo:order.business_snapshot?.email,...orderEmail(r.kind,order,items,config)}, {idempotencyKey:`malfi-${order.payment_mode}-${r.kind}-${r.order_id}-v1`});
+      const original=orderEmail(r.kind,order,items,config);
+      const email=r.template_version===2?compactOrderEmail(r.kind,order,items,config,original.text):original;
+      const result=await resend.emails.send({from:config.emailMode==='test'?'MALFI Pruebas <onboarding@resend.dev>':process.env.EMAIL_FROM,to:[to],replyTo:order.business_snapshot?.email,...email}, {idempotencyKey:`malfi-${order.payment_mode}-${r.kind}-${r.order_id}-v${r.template_version||1}`});
       if(result.error||!result.data?.id)throw new Error('El proveedor no confirmó el envío.');
       await pool.query("UPDATE order_email_outbox SET status='sent',provider_id=$3,sent_at=now(),last_error=NULL WHERE order_id=$1 AND kind=$2 AND status='sending'",[r.order_id,r.kind,result.data.id]);
     } catch(e) {

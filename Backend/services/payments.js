@@ -51,7 +51,7 @@ export async function settlePayment(pool, attemptId, bank) {
       /^\d{4}$/.test(String(bank.card_detail?.card_number))?String(bank.card_detail.card_number):null,
       bank.transaction_date && !Number.isNaN(Date.parse(bank.transaction_date))?bank.transaction_date:null
     ]);
-    if (fulfill) await client.query(`INSERT INTO order_email_outbox(order_id,kind) VALUES($1,'payment_confirmed'),($1,'admin_new_order') ON CONFLICT(order_id,kind) DO NOTHING`,[order.id]);
+    if (fulfill) await client.query(`INSERT INTO order_email_outbox(order_id,kind,template_version) VALUES($1,'payment_confirmed',2),($1,'admin_new_order',2) ON CONFLICT(order_id,kind) DO NOTHING`,[order.id]);
     await client.query('COMMIT');
     return fulfill?'paid':'review';
   } catch(e) { await client.query('ROLLBACK'); throw e; }

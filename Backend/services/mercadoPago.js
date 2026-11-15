@@ -151,7 +151,7 @@ export async function applyMpPayment(pool,verified) {
         await db.query(`UPDATE orders SET payment_status='paid',status=$2,paid_at=COALESCE(paid_at,now()),
           inventory_reserved=CASE WHEN $3 THEN FALSE ELSE inventory_reserved END,stock_deducted_at=CASE WHEN $3 THEN now() ELSE stock_deducted_at END WHERE id=$1`,[order.id,fulfill?'pending_payment':'payment_review',fulfill]);
         await db.query("UPDATE mercadopago_checkouts SET state=$2,settled_payment_id=$3,last_error=$4,updated_at=now() WHERE id=$1",[a.id,fulfill?'paid':'review',String(p.id),fulfill?null:'Pago recibido: revisar inventario antes de preparar.']);
-        if(fulfill)await db.query("INSERT INTO order_email_outbox(order_id,kind) VALUES($1,'payment_confirmed'),($1,'admin_new_order') ON CONFLICT(order_id,kind) DO NOTHING",[order.id]);
+        if(fulfill)await db.query("INSERT INTO order_email_outbox(order_id,kind,template_version) VALUES($1,'payment_confirmed',2),($1,'admin_new_order',2) ON CONFLICT(order_id,kind) DO NOTHING",[order.id]);
         outcome=fulfill?'paid':'review';
       }
     } else if(!current.settled_payment_id && order.payment_status!=='paid') {

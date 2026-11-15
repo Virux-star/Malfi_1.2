@@ -91,6 +91,7 @@ test('Mercado Pago: checkout, notificaciones y stock con PostgreSQL real y API s
       updatePayment(firstPayment,'approved');const [a,b]=await Promise.all([webhook(firstPayment),webhook(firstPayment)]);assert.equal(a.status,200);assert.equal(b.status,200);
       const o=await readOrder(first);assert.equal(o.paymentStatus,'paid');assert.equal(o.payment.payment_id,String(firstPayment.id));assert.equal(o.payment.card_last4,'1111');assert.equal(o.canPay,false);assert.deepEqual(await product(),{stock:49,reserved_stock:0});
       assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM order_email_outbox WHERE order_id=$1',[first.orderId])).rows[0].n,2);assert.equal((await pay(first)).status,409);
+      assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM order_email_outbox WHERE order_id=$1 AND template_version=2',[first.orderId])).rows[0].n,2);
     });
     await t.test('retorno auténtico restaura el enlace privado y administración consulta Mercado Pago',async()=>{
       const r=await request(`/api/payments/mercadopago/return?state=${mpReturnState(firstCheckout.id,config)}&payment_id=${firstPayment.id}&status=rejected`);assert.equal(r.status,303);assert.match(r.headers.get('location'),new RegExp(`/pedido/${first.orderId}#token=${first.accessToken}`));

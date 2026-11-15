@@ -115,11 +115,30 @@ test('recorrido de compra y administración con PostgreSQL real y banco simulado
       assert.equal((await request('/api/admin/orders?search=Cliente&offset=0',{cookie:adminCookie})).status,200);
     });
     await t.test('correo transaccional se confirma una vez sin usar servicios reales',async()=>{
-      process.env.EMAIL_TEST_TO='test@example.test';let sends=0;
-      const provider={emails:{send:async(message,opts)=>{sends++;assert.deepEqual(message.to,['test@example.test']);assert.ok(message.text.includes('Condiciones aceptadas'));assert.ok(opts.idempotencyKey);return {data:{id:randomUUID()}};}}};
-      await sendEmailsOnce(pool,{...config,emailMode:'test'},provider);const first=sends;assert.ok(first>=2);await sendEmailsOnce(pool,{...config,emailMode:'test'},provider);assert.equal(sends,first);
+      // A queued message from the previous version keeps its original body and key.
+      await pool.query("UPDATE order_email_outbox SET template_version=1 WHERE order_id=$1 AND kind='payment_confirmed'",[paidOrder.orderId]);
+      process.env.EMAIL_TEST_TO='test@example.test';let sends=0,failedMessage,failedOptions;
+      const versions=new Set();
+      const provider={emails:{send:async(message,opts)=>{
+        sends++;assert.deepEqual(message.to,['test@example.test']);assert.ok(opts.idempotencyKey);
+        const legacy=opts.idempotencyKey.endsWith('-v1');versions.add(legacy?1:2);
+        if(legacy)assert.ok(message.text.includes('Condiciones aceptadas'));
+        else {
+          assert.ok(!message.text.includes(business.legalAddress));
+          if(message.subject.includes('Tu compra'))assert.ok(Buffer.from(message.attachments[0].content,'base64').toString('utf8').includes('Condiciones aceptadas'));
+          else assert.equal(message.attachments,undefined);
+        }
+        if(sends===1){failedMessage=structuredClone(message);failedOptions=structuredClone(opts);return {error:{message:'Respuesta incierta simulada'}};}
+        if(opts.idempotencyKey===failedOptions.idempotencyKey){assert.deepEqual(message,failedMessage);assert.deepEqual(opts,failedOptions);}
+        return {data:{id:randomUUID()}};
+      }}};
+      await sendEmailsOnce(pool,{...config,emailMode:'test'},provider);const first=sends;assert.ok(first>=2);
+      assert.deepEqual(versions,new Set([1,2]));
+      await pool.query("UPDATE order_email_outbox SET next_attempt_at=now() WHERE status='queued'");
+      await sendEmailsOnce(pool,{...config,emailMode:'test'},provider);assert.equal(sends,first+1);
+      await sendEmailsOnce(pool,{...config,emailMode:'test'},provider);assert.equal(sends,first+1);
       await pool.query("UPDATE order_email_outbox SET status='queued',attempts=1,started_at=now()-interval '25 hours',next_attempt_at=now() WHERE order_id=$1",[paidOrder.orderId]);
-      await sendEmailsOnce(pool,{...config,emailMode:'test'},provider);assert.equal(sends,first);
+      await sendEmailsOnce(pool,{...config,emailMode:'test'},provider);assert.equal(sends,first+1);
       assert.equal((await pool.query('SELECT status FROM order_email_outbox WHERE order_id=$1 LIMIT 1',[paidOrder.orderId])).rows[0].status,'needs_review');
     });
     await t.test('sesión, seguimiento y transiciones de despacho requieren pago',async()=>{
