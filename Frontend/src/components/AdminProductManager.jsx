@@ -1,3 +1,5 @@
+import ProductOptionsFields, { optionsFromText } from './ProductOptionsFields';
+import ProductImagesInput, { appendProductPhotos } from './ProductImagesInput';
 
 import { useEffect, useRef, useState } from "react";
 import "./AdminProductManager.css";
@@ -18,8 +20,7 @@ function AdminProductManager() {
   const [message, setMessage] = useState("");
 
   const [editingId, setEditingId] = useState(null);
-  const [currentImage, setCurrentImage] = useState("");
-  const [newImage, setNewImage] = useState(null);
+  const [photos, setPhotos] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [changingId, setChangingId] = useState(null);
@@ -32,7 +33,9 @@ function AdminProductManager() {
     description: "",
     price: "",
     category: "Velas de soja",
-    stock: ""
+    stock: "",
+    colors: "",
+    aromas: ""
   });
 
   // Obtener todos los productos, incluidos los ocultos
@@ -82,11 +85,12 @@ function AdminProductManager() {
       description: product.description || "",
       price: String(product.price),
       category: product.category,
-      stock: String(product.stock)
+      stock: String(product.stock),
+      colors: (product.colors || []).join("\n"),
+      aromas: (product.aromas || []).join("\n")
     });
 
-    setCurrentImage(product.image_url || "");
-    setNewImage(null);
+    setPhotos((product.images || (product.image_url ? [product.image_url] : [])).map(url => ({ url })));
     setMessage("");
     setError("");
 
@@ -104,8 +108,7 @@ function AdminProductManager() {
 
   function cancelEditing() {
     setEditingId(null);
-    setNewImage(null);
-    setCurrentImage("");
+    setPhotos([]);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -127,10 +130,7 @@ function AdminProductManager() {
 
     if (editingId === null || saving) return;
 
-    if (newImage && newImage.size > 5 * 1024 * 1024) {
-      setError("La fotografía no puede superar los 5 MB.");
-      return;
-    }
+    if (!photos.length) { setError("El producto debe tener al menos una fotografía."); return; }
 
     const formData = new FormData();
 
@@ -140,10 +140,9 @@ function AdminProductManager() {
     formData.append("category", form.category);
     formData.append("stock", form.stock);
 
-    // Enviar imagen solamente si seleccionó una nueva
-    if (newImage) {
-      formData.append("image", newImage);
-    }
+    formData.append("colors", JSON.stringify(optionsFromText(form.colors)));
+    formData.append("aromas", JSON.stringify(optionsFromText(form.aromas)));
+    appendProductPhotos(formData, photos);
 
     setSaving(true);
     setError("");
@@ -353,35 +352,8 @@ function AdminProductManager() {
                 </select>
               </label>
 
-            <div className="manager-photo-field">
-              <p>Fotografía actual</p>
-
-              {currentImage ? (
-                <img
-                  src={currentImage}
-                  alt="Fotografía actual del producto"
-                />
-              ) : (
-                <p>Sin fotografía</p>
-              )}
-            </div>
-
-            <label>
-              Reemplazar fotografía (opcional)
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) =>
-                  setNewImage(event.target.files[0] || null)
-                }
-              />
-            </label>
-
-            <p className="manager-help">
-              Si no seleccionas otra fotografía, se
-              conservará la imagen actual.
-            </p>
+            <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={saving} />
+            <ProductImagesInput photos={photos} onChange={setPhotos} disabled={saving} />
 
             <div className="manager-actions">
               <button

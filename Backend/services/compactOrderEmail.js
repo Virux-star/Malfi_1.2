@@ -1,3 +1,4 @@
+import { orderItemDescription } from './productOptions.js';
 import { orderToken } from './payments.js';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -36,13 +37,13 @@ export function compactOrderEmail(kind, order, items, config, confirmationText) 
     `MALFI${test ? ' · PRUEBA SIN COBRO REAL' : ''}`, title, intro, `Pedido #${order.id}`,
     admin && `Cliente: ${order.customer_name}`,
     admin && `Contacto del cliente: ${order.customer_email} · ${order.customer_phone}`,
-    ...items.map(item => `${item.product_name} · ${item.quantity} × ${clp(item.unit_price_clp)} = ${clp(item.line_total_clp)}`),
+    ...items.map(item => `${orderItemDescription(item)} · ${item.quantity} × ${clp(item.unit_price_clp)} = ${clp(item.line_total_clp)}`),
     `Subtotal: ${clp(order.subtotal_clp)}`, `${costLabel}: ${costValue}`,
     `Total pagado: ${clp(order.total_clp)}`, `${deliveryLabel}: ${delivery}`, pickup ? period : `Plazo estimado: ${period}`,
     `${action}: ${url}`, note, contact && `¿Necesitas ayuda? ${contact}`
   ].filter(Boolean).join('\n');
   const rows = items.map(item => `<tr>
-    <td style="padding:12px 0;border-bottom:1px solid #e9dfd1;overflow-wrap:anywhere">${escape(item.product_name)}<br>
+    <td style="padding:12px 0;border-bottom:1px solid #e9dfd1;overflow-wrap:anywhere">${escape(orderItemDescription(item))}<br>
       <span style="font-size:13px;color:#75675d">${escape(item.quantity)} × ${escape(clp(item.unit_price_clp))}</span></td>
     <td style="padding:12px 0;border-bottom:1px solid #e9dfd1;text-align:right;white-space:nowrap;vertical-align:top">${escape(clp(item.line_total_clp))}</td>
   </tr>`).join('');

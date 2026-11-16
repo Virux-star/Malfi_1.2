@@ -14,9 +14,10 @@
     "db:migrate": "node --env-file-if-exists=Backend/.env Backend/scripts/migrate.js",
     "admin:create": "npm --prefix Backend run admin:create",
     "check:production": "node --env-file-if-exists=Backend/.env Backend/scripts/checkProduction.js",
-    "test": "npm --prefix Backend test",
+    "test": "node --test Frontend/src/lib/cart.test.js && npm --prefix Backend test",
     "admin:reset": "npm --prefix Backend run admin:reset",
     "mp:check": "node --env-file-if-exists=Backend/.env Backend/scripts/checkMercadoPago.js",
-    "flow:check": "node --env-file-if-exists=Backend/.env Backend/scripts/checkFlow.js"
+    "flow:check": "node --env-file-if-exists=Backend/.env Backend/scripts/checkFlow.js",
+    "test:product-options": "node --env-file-if-exists=Backend/.env scripts/test-product-options.mjs"
   }
 }

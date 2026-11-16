@@ -1,3 +1,4 @@
+import { orderItemDescription } from './productOptions.js';
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[char]));
@@ -19,7 +20,7 @@ export function createOrderEmail(kind, id, order, items) {
     ? `MALFI · Nuevo pedido pagado #${id} [PRUEBA]`
     : `MALFI · Confirmación de compra #${id} [PRUEBA]`;
   const lines = items.map((i) =>
-    `${i.product_name} x${i.quantity}: ${clp(i.line_total_clp)}`
+    `${orderItemDescription(i)} x${i.quantity}: ${clp(i.line_total_clp)}`
   );
   const text = [
     "MALFI · MENSAJE DE PRUEBA", heading, intro, `Pedido #${id}`,
@@ -31,7 +32,7 @@ export function createOrderEmail(kind, id, order, items) {
 
   const rows = items.map((i) => `
     <tr><td style="padding:12px 0;border-bottom:1px solid #E9DFD1;color:#49382E;">
-      ${safe(i.product_name)} <span style="color:#92745F;">× ${safe(i.quantity)}</span>
+      ${safe(orderItemDescription(i))} <span style="color:#92745F;">× ${safe(i.quantity)}</span>
     </td><td style="padding:12px 0;border-bottom:1px solid #E9DFD1;text-align:right;white-space:nowrap;color:#49382E;">
       ${safe(clp(i.line_total_clp))}
     </td></tr>`).join("");

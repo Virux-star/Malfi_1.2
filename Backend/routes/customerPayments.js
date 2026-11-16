@@ -2,6 +2,7 @@ import { providerMode, providerAvailable } from '../config/paymentProviders.js';
 import { startMercadoPago, reconcileMpCheckout } from '../services/mercadoPago.js';
 import { startFlow, reconcileFlowCheckout, flowCredentialId } from '../services/flow.js';
 import { rateLimit } from 'express-rate-limit';
+import { normalizeCartLines, quantityByProduct, selectedOptions } from '../services/productOptions.js';
 import { readiness } from '../services/store.js';
 import { resolveShipping, shippingPrice } from '../services/shipping.js';
 import { pickupLocation } from '../config/fulfillment.js';
@@ -29,13 +30,12 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     }
     customer.email=customer.email.toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)||!/^[+0-9\s()-]{8,25}$/.test(customer.phone)) throw fail('Revisa tu correo y teléfono.',400);
-    if (!Array.isArray(req.body.items)||req.body.items.length<1||req.body.items.length>30) throw fail('Carrito no válido.',400);
-    const items=req.body.items.map(i=>({id:Number(i?.id),quantity:Number(i?.quantity)})).sort((a,b)=>a.id-b.id);
-    if (items.some(i=>!Number.isInteger(i.id)||i.id<1||i.id>2147483647||!Number.isInteger(i.quantity)||i.quantity<1||i.quantity>100)||new Set(items.map(i=>i.id)).size!==items.length) throw fail('Productos o cantidades no válidos.',400);
+    const items=normalizeCartLines(req.body.items);
+    const quantities=quantityByProduct(items);
     if (req.body.acceptTerms!==true) throw fail('Debes aceptar los términos y la política de privacidad.',400);
     const provider=req.body.paymentProvider||'webpay';
     if (!['webpay','mercadopago','flow'].includes(provider)) throw fail('Elige un medio de pago válido.',400);
-    const fingerprint=digest(JSON.stringify({customer,items,termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
+    const fingerprint=digest(JSON.stringify({customer,items:items.map(i=>i.color||i.aroma?i:{id:i.id,quantity:i.quantity}),termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
     const token=orderToken(key,config);
     const client=await pool.connect();
     let order;
@@ -51,12 +51,13 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
         if (!providerAvailable(config,provider)) throw fail('El medio de pago elegido no está disponible.',503);
         if (!state.ready) throw fail('Estamos preparando la tienda para recibir compras. Contáctanos si necesitas ayuda.',503);
         if (req.body.termsVersion!==state.store.policiesVersion) throw fail('Las condiciones de compra cambiaron. Recarga la página para revisarlas.');
-        const products=(await client.query('SELECT id,name,price,stock,reserved_stock FROM products WHERE id=ANY($1::int[]) AND active=TRUE ORDER BY id FOR UPDATE',[items.map(i=>i.id)])).rows;
+        const products=(await client.query('SELECT id,name,price,stock,reserved_stock,colors,aromas FROM products WHERE id=ANY($1::int[]) AND active=TRUE ORDER BY id FOR UPDATE',[[...quantities.keys()]])).rows;
         const byId=new Map(products.map(p=>[p.id,p]));
         let subtotal=0;
         for (const i of items) {
           const p=byId.get(i.id);
-          if (!p||p.stock-p.reserved_stock<i.quantity) throw fail(`Uno de los productos no tiene stock suficiente. Revisa tu carrito.`);
+          if (!p||p.stock-p.reserved_stock<quantities.get(i.id)) throw fail(`Uno de los productos no tiene stock suficiente. Revisa tu carrito.`);
+          selectedOptions(p,i);
           subtotal+=p.price*i.quantity;
         }
         const rate=pickup?{...pickupLocation,carrier:'Retiro en tienda',price_clp:0,delivery_days_min:0,delivery_days_max:0}
@@ -74,7 +75,8 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
         for (const i of items) {
           const p=byId.get(i.id);
           await client.query('UPDATE products SET reserved_stock=reserved_stock+$1 WHERE id=$2',[i.quantity,i.id]);
-          await client.query('INSERT INTO order_items(order_id,product_id,product_name,unit_price_clp,quantity,line_total_clp) VALUES($1,$2,$3,$4,$5,$6)',[order.id,p.id,p.name,p.price,i.quantity,p.price*i.quantity]);
+          const choice=selectedOptions(p,i);
+          await client.query('INSERT INTO order_items(order_id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[order.id,p.id,p.name,p.price,i.quantity,p.price*i.quantity,choice.color||null,choice.aroma||null]);
         }
       }
       await client.query('COMMIT');
@@ -109,7 +111,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
       if(p)p={...p,provider:'webpay'};
       canPay=Boolean(payable&&(!p||p.state==='failed'||(p.state==='created'&&Date.now()-new Date(p.created_at)<4*60_000)));
     }
-    const items=(await pool.query('SELECT product_id,product_name,unit_price_clp,quantity,line_total_clp FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
+    const items=(await pool.query('SELECT id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
     res.json({id:o.id,status:o.status,paymentStatus:o.payment_status,mode:o.payment_mode,total:Number(o.total_clp),subtotal:Number(o.subtotal_clp),shipping:Number(o.shipping_clp),carrier:o.carrier,comuna:o.shipping_comuna,
       deliveryDaysMin:o.delivery_days_min,deliveryDaysMax:o.delivery_days_max,createdAt:o.created_at,paidAt:o.paid_at,expiresAt:o.expires_at,trackingUrl:o.tracking_url,trackingNumber:o.tracking_number,
       deliveryMethod:o.delivery_method,pickupAddress:o.delivery_method==='pickup'?`${o.shipping_address}, ${o.shipping_comuna}`:null,

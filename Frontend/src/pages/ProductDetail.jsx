@@ -1,3 +1,4 @@
+import { productQuantity, cartKey } from '../lib/cart';
 import { useEffect, useState } from "react";
 import "./ProductDetail.css";
 import { useCart } from "../context/CartContext";
@@ -10,6 +11,9 @@ function ProductDetail({ productId }) {
   const [error, setError] = useState("");
 
   const [quantity, setQuantity] = useState(1);
+  const [color, setColor] = useState("");
+  const [aroma, setAroma] = useState("");
+  const [photoIndex, setPhotoIndex] = useState(0);
 const [cartMessage, setCartMessage] = useState("");
 
 const { items, addToCart } = useCart();
@@ -17,10 +21,16 @@ const { items, addToCart } = useCart();
 function handleAddToCart() {
   if (!product || product.stock <= 0) return;
 
-  const existingQuantity =
-    items.find((item) => item.id === product.id)?.quantity || 0;
+  if ((product.colors?.length && !color) || (product.aromas?.length && !aroma)) {
+    setCartMessage("Selecciona las opciones de tu producto."); return;
+  }
+  const key = cartKey({ id: product.id, color, aroma });
+  if (items.length >= 30 && !items.some(item => item.key === key)) {
+    setCartMessage("El carrito admite hasta 30 selecciones distintas."); return;
+  }
+  const existingQuantity = productQuantity(items, product.id);
 
-  const availableToAdd = product.stock - existingQuantity;
+  const availableToAdd = Math.min(product.stock, 100) - existingQuantity;
 
   if (availableToAdd <= 0) {
     setCartMessage(
@@ -31,7 +41,7 @@ function handleAddToCart() {
 
   const amount = Math.min(quantity, availableToAdd);
 
-  addToCart(product, amount);
+  addToCart(product, amount, { color, aroma });
 
   setCartMessage(
     `${amount} unidad(es) agregadas al carrito.`
@@ -45,6 +55,7 @@ function handleAddToCart() {
       setLoading(true);
       setError("");
       setProduct(null);
+      setColor(""); setAroma(""); setPhotoIndex(0); setQuantity(1); setCartMessage("");
 
       try {
         const response = await fetch(
@@ -79,6 +90,10 @@ function handleAddToCart() {
     return () => controller.abort();
   }, [productId]);
 
+  const photos = product?.images?.length ? product.images : product?.image_url ? [product.image_url] : [];
+  const availableToAdd = product ? Math.max(0, Math.min(product.stock, 100) - productQuantity(items, product.id)) : 0;
+  const selectionReady = (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma);
+
   const formatPrice = (price) =>
     new Intl.NumberFormat("es-CL", {
       style: "currency",
@@ -105,17 +120,15 @@ function handleAddToCart() {
         {!loading && product && (
           <div className="product-detail-layout">
 
-            <div className="product-detail-photo">
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                />
-              ) : (
-                <div className="product-detail-placeholder">
-                  MALFI
-                </div>
-              )}
+            <div className="product-gallery">
+              <div className="product-detail-photo">
+                {photos.length ? <img src={photos[photoIndex] || photos[0]} alt={product.name + ' · Fotografía ' + (photoIndex + 1)} /> : <div className="product-detail-placeholder">MALFI</div>}
+              </div>
+              {photos.length > 1 && <div className="product-gallery-thumbs" role="group" aria-label="Fotografías del producto">
+                {photos.map((url, index) => <button type="button" key={url} aria-pressed={photoIndex === index} aria-label={'Ver fotografía ' + (index + 1)} onClick={() => setPhotoIndex(index)}>
+                  <img src={url} alt="" loading="lazy" />
+                </button>)}
+              </div>}
             </div>
 
             <div className="product-detail-info">
@@ -155,6 +168,22 @@ function handleAddToCart() {
                 Consulta los destinos y costos de despacho al finalizar tu compra.
               </p>
 
+              <div className="detail-options">
+                {product.colors?.length > 0 && <label>Color
+                  <select value={color} onChange={event => { setColor(event.target.value); setCartMessage(''); }}>
+                    <option value="">Selecciona un color</option>
+                    {product.colors.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>}
+                {product.aromas?.length > 0 && <label>Aroma
+                  <select value={aroma} onChange={event => { setAroma(event.target.value); setCartMessage(''); }}>
+                    <option value="">Selecciona un aroma</option>
+                    {product.aromas.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>}
+                {!selectionReady && <p>Selecciona las opciones antes de agregar al carrito.</p>}
+              </div>
+
               {product.stock > 0 && (
   <div className="detail-cart-actions">
 
@@ -180,10 +209,10 @@ function handleAddToCart() {
         type="button"
         onClick={() =>
           setQuantity((previous) =>
-            Math.min(product.stock, previous + 1)
+            Math.min(Math.max(1, availableToAdd), previous + 1)
           )
         }
-        disabled={quantity >= product.stock}
+        disabled={quantity >= availableToAdd}
         aria-label="Aumentar cantidad"
       >
         +
@@ -193,11 +222,13 @@ function handleAddToCart() {
     <button
       type="button"
       className="add-cart-button"
+      disabled={!selectionReady || availableToAdd <= 0}
       onClick={handleAddToCart}
     >
       Agregar al carrito
     </button>
 
+    {availableToAdd <= 0 && <p>Ya tienes todas las unidades disponibles en tu carrito.</p>}
     <p role="status" className="cart-feedback">
       {cartMessage}
     </p>

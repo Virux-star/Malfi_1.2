@@ -21,7 +21,7 @@ export default function Checkout() {
   },[]);
   useEffect(()=>{
     const c=new AbortController();setQuote(null);setError('');
-    if(items.length)api('/api/checkout/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items.map(i=>({id:i.id,quantity:i.quantity}))}),signal:c.signal}).then(setQuote).catch(e=>{if(e.name!=='AbortError')setError(e.message);});
+    if(items.length)api('/api/checkout/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items.map(i=>({id:i.id,quantity:i.quantity,color:i.color||"",aroma:i.aroma||""}))}),signal:c.signal}).then(setQuote).catch(e=>{if(e.name!=='AbortError')setError(e.message);});
     return()=>c.abort();
   },[items]);
   const regions=(store?.regions||[]).filter(r=>destinations.some(d=>d.region===r));
@@ -36,7 +36,7 @@ export default function Checkout() {
     e.preventDefault();if(busy||!deliveryAvailable||!accepted||!store?.checkoutAvailable||!quote||!provider||created)return;
     setBusy(true);setError('');
     try{
-      const payload={customer:pickup?{fullName:form.fullName,email:form.email,phone:form.phone}:form,...(pickup?{deliveryMethod:'pickup'}:{}),items:items.map(i=>({id:i.id,quantity:i.quantity})),expectedTotal:total,paymentProvider:provider?.id,acceptTerms:true,termsVersion:store.business.policiesVersion};
+      const payload={customer:pickup?{fullName:form.fullName,email:form.email,phone:form.phone}:form,...(pickup?{deliveryMethod:'pickup'}:{}),items:items.map(i=>({id:i.id,quantity:i.quantity,color:i.color||"",aroma:i.aroma||""})),expectedTotal:total,paymentProvider:provider?.id,acceptTerms:true,termsVersion:store.business.policiesVersion};
       const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload))))).map(x=>x.toString(16).padStart(2,'0')).join('');
       let prior;try{prior=JSON.parse(localStorage.getItem('malfi_checkout_attempt'));}catch{}
       const key=prior?.hash===hash?prior.key:crypto.randomUUID();
@@ -82,7 +82,7 @@ export default function Checkout() {
       </form>
     </section><aside className="checkout-summary"><h2>Tu pedido</h2>
       {!quote&&!error&&<p role="status">Verificando precios y disponibilidad…</p>}
-      {quote&&<>{quote.items.map(i=><div className="checkout-product" key={i.id}>{i.image_url&&<img src={i.image_url} alt=""/>}<div className="checkout-product-info"><h3>{i.name}</h3><p>Cantidad: {i.quantity}</p><strong>{clp(i.line_total)}</strong></div></div>)}
+      {quote&&<>{quote.items.map(i=><div className="checkout-product" key={JSON.stringify([i.id,i.color,i.aroma])}>{i.image_url&&<img src={i.image_url} alt=""/>}<div className="checkout-product-info"><h3>{i.name}</h3>{(i.color||i.aroma)&&<p>{[i.color&&("Color: "+i.color),i.aroma&&("Aroma: "+i.aroma)].filter(Boolean).join(" · ")}</p>}<p>Cantidad: {i.quantity}</p><strong>{clp(i.line_total)}</strong></div></div>)}
       <div className="checkout-summary-line"><span>Subtotal</span><strong>{clp(quote.subtotal)}</strong></div>
       <div className="checkout-summary-line"><span>{pickup?'Retiro en tienda':`Despacho${shipping?` · ${shipping.carrier}`:''}`}</span><strong>{pickup?'Sin costo':shipping?shippingCost===0?'Gratis':clp(shippingCost):'Selecciona un destino'}</strong></div>
       {!pickup&&freeFrom!=null&&<p className="checkout-shipping-note" role="status">{quote.freeShippingEligible?'Tu compra tiene despacho gratis en destinos habilitados.':`Despacho gratis desde ${clp(freeFrom)} en productos.`}</p>}

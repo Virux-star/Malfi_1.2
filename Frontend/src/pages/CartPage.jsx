@@ -1,3 +1,4 @@
+import { productQuantity } from '../lib/cart';
 
 import { useCart } from "../context/CartContext";
 import { useStore } from "../context/StoreContext";
@@ -50,7 +51,7 @@ function CartPage() {
             <div className="cart-items">
 
               {items.map((item) => (
-                <article className="cart-item" key={item.id}>
+                <article className="cart-item" key={item.key}>
 
                   <a
                     href={`/producto/${item.id}`}
@@ -72,6 +73,7 @@ function CartPage() {
                       <h2>{item.name}</h2>
                     </a>
 
+                    {(item.color || item.aroma) && <p>{[item.color && ("Color: " + item.color), item.aroma && ("Aroma: " + item.aroma)].filter(Boolean).join(" · ")}</p>}
                     <p className="cart-unit-price">
                       {formatPrice(item.price)}
                     </p>
@@ -82,7 +84,7 @@ function CartPage() {
                         type="button"
                         onClick={() =>
                           updateQuantity(
-                            item.id,
+                            item.key,
                             item.quantity - 1
                           )
                         }
@@ -98,11 +100,11 @@ function CartPage() {
                         type="button"
                         onClick={() =>
                           updateQuantity(
-                            item.id,
+                            item.key,
                             item.quantity + 1
                           )
                         }
-                        disabled={item.quantity >= item.stock}
+                        disabled={productQuantity(items, item.id) >= item.stock}
                         aria-label={`Agregar una unidad de ${item.name}`}
                       >
                         +
@@ -113,7 +115,7 @@ function CartPage() {
                     <button
                       type="button"
                       className="cart-remove"
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.key)}
                     >
                       Eliminar
                     </button>
