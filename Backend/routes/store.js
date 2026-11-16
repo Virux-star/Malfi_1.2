@@ -1,6 +1,7 @@
 import { defaultStore, getStore, readiness } from '../services/store.js';
 import { pickupLocation } from '../config/fulfillment.js';
-const regions=['Arica y Parinacota','Tarapacá','Antofagasta','Atacama','Coquimbo','Valparaíso','Metropolitana de Santiago',"Libertador General Bernardo O'Higgins",'Maule','Ñuble','Biobío','La Araucanía','Los Ríos','Los Lagos','Aysén','Magallanes y de la Antártica Chilena'];
+import { regions, destination, isPaketDestination, paketCommunes, paketPrice, santiagoRegion } from '../config/shipping.js';
+import { shippingRates, shippingDestinations } from '../services/shipping.js';
 const wrap=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){next(e);}};
 export function validRut(value) {
   const text=String(value).replace(/[.\s]/g,'').toUpperCase();
@@ -16,8 +17,7 @@ export function registerStoreRoutes(app,pool,requireAdmin,config) {
     res.json({business:r.store,pickup:pickupLocation,checkoutAvailable:r.ready,paymentMode:config.mode,paymentProviders:r.paymentProviders,regions});
   }));
   app.get('/api/shipping/destinations',wrap(async(req,res)=>{
-    const rates=await pool.query('SELECT region,comuna,carrier,price_clp,delivery_days_min,delivery_days_max FROM shipping_rates_comunas WHERE active=TRUE AND price_clp IS NOT NULL AND verified_at IS NOT NULL ORDER BY region,comuna');
-    res.json(rates.rows);
+    res.json(await shippingDestinations(pool));
   }));
   app.get('/api/admin/readiness',requireAdmin,wrap(async(req,res)=>{
     const r=await readiness(pool,config);
@@ -41,17 +41,50 @@ export function registerStoreRoutes(app,pool,requireAdmin,config) {
   app.get('/api/admin/shipping',requireAdmin,wrap(async(req,res)=>{
     res.json((await pool.query('SELECT * FROM shipping_rates_comunas ORDER BY region,comuna')).rows);
   }));
+  app.get('/api/admin/shipping/settings',requireAdmin,wrap(async(req,res)=>{
+    const rates=await shippingRates(pool);
+    const paket=rates.filter(r=>r.carrier==='Paket'&&isPaketDestination(r.region,r.comuna));
+    const verified=paket.filter(r=>r.active&&r.verified_at&&r.delivery_days_min>=1&&r.delivery_days_max>=r.delivery_days_min);
+    res.json({paket:{price:paketPrice,comunas:paketCommunes,active:verified.length>0,
+      daysMin:verified.length?Math.max(...verified.map(r=>r.delivery_days_min)):'',
+      daysMax:verified.length?Math.max(...verified.map(r=>r.delivery_days_max)):''},
+      regional:rates.filter(r=>r.rate_scope==='region'),
+      legacy:rates.filter(r=>r.carrier==='Blue Express'&&r.rate_scope!=='region')});
+  }));
+  app.put('/api/admin/shipping/paket',requireAdmin,wrap(async(req,res)=>{
+    const min=Number(req.body?.daysMin),max=Number(req.body?.daysMax);
+    if(typeof req.body?.active!=='boolean'||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min||max>60)
+      return res.status(400).json({error:'Revisa el plazo de Paket: entre 1 y 60 días hábiles.'});
+    if(req.body.confirmedRealRate!==true)return res.status(400).json({error:'Confirma la tarifa de $3.000, cobertura de Santiago y plazo de Paket.'});
+    const client=await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT pg_advisory_xact_lock(20261116,7000)');
+      for(const comuna of paketCommunes)await client.query(`INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,delivery_days_min,delivery_days_max,santiago_coverage,active,verified_at,rate_scope)
+        VALUES($1,$2,'Paket',$3,$4,$5,TRUE,$6,now(),'comuna')
+        ON CONFLICT(lower(trim(region)),lower(trim(comuna))) DO UPDATE SET carrier='Paket',price_clp=excluded.price_clp,
+          delivery_days_min=excluded.delivery_days_min,delivery_days_max=excluded.delivery_days_max,santiago_coverage=TRUE,
+          active=excluded.active,verified_at=now(),rate_scope='comuna',updated_at=now()`,[santiagoRegion,comuna,paketPrice,min,max,req.body.active]);
+      await client.query('COMMIT');
+    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+    res.json({message:'Paket guardado: $3.000 para Santiago.'});
+  }));
   app.post('/api/admin/shipping',requireAdmin,wrap(async(req,res)=>{
     const {region,carrier}=req.body||{};
-    const comuna=typeof req.body?.comuna==='string'?req.body.comuna.trim():'';
+    const regional=req.body?.rateScope==='region';
+    const comuna=regional?'':typeof req.body?.comuna==='string'?req.body.comuna.trim():'';
+    const place=regional&&regions.includes(region)?{region,comuna:''}:destination(region,comuna);
     const price=Number(req.body?.price),min=Number(req.body?.daysMin),max=Number(req.body?.daysMax);
     const santiago=req.body?.santiagoCoverage===true;
-    if(String(req.body?.price??'').trim()===''||!regions.includes(region)||!comuna||comuna.length>100||!['Paket','Blue Express'].includes(carrier)||!Number.isInteger(price)||price<0||price>1000000||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min||max>60||typeof req.body.active!=='boolean')return res.status(400).json({error:'Revisa destino, tarifa en pesos y plazo de 1 a 60 días hábiles.'});
-    if((carrier==='Paket'&&(!santiago||region!=='Metropolitana de Santiago'))||(carrier==='Blue Express'&&santiago))return res.status(400).json({error:'Paket se utiliza para comunas con cobertura de Santiago confirmada. Fuera de esa cobertura selecciona Blue Express.'});
-    if(req.body.confirmedRealRate!==true)return res.status(400).json({error:'Confirma que el precio y el plazo corresponden a tu tarifa real.'});
-    const old=await pool.query('SELECT id FROM shipping_rates_comunas WHERE lower(trim(region))=lower($1) AND lower(trim(comuna))=lower($2)',[region,comuna]);
-    if(old.rowCount)await pool.query('UPDATE shipping_rates_comunas SET carrier=$2,price_clp=$3,delivery_days_min=$4,delivery_days_max=$5,santiago_coverage=$6,active=$7,verified_at=now(),updated_at=now() WHERE id=$1',[old.rows[0].id,carrier,price,min,max,santiago,req.body.active]);
-    else await pool.query('INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,delivery_days_min,delivery_days_max,santiago_coverage,active,verified_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,now())',[region,comuna,carrier,price,min,max,santiago,req.body.active]);
-    res.json({message:'Tarifa de despacho guardada.'});
+    if(String(req.body?.price??'').trim()===''||!place||!['Paket','Blue Express'].includes(carrier)||!Number.isInteger(price)||price<0||price>1000000||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min||max>60||typeof req.body.active!=='boolean')return res.status(400).json({error:'Revisa destino, tarifa en pesos y plazo de 1 a 60 días hábiles.'});
+    if((regional&&carrier!=='Blue Express')||(carrier==='Paket'&&(!santiago||!isPaketDestination(place.region,place.comuna)||price!==paketPrice))||(carrier==='Blue Express'&&(santiago||(!regional&&isPaketDestination(place.region,place.comuna)))))return res.status(400).json({error:'Paket cuesta $3.000 en Santiago. Blue Express utiliza tarifas regionales para los demás destinos.'});
+    if(req.body.confirmedRealRate!==true)return res.status(400).json({error:'Confirma que el precio, la cobertura y el plazo corresponden a tu acuerdo real.'});
+    await pool.query(`INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,delivery_days_min,delivery_days_max,santiago_coverage,active,verified_at,rate_scope)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,now(),$9)
+      ON CONFLICT(lower(trim(region)),lower(trim(comuna))) DO UPDATE SET carrier=excluded.carrier,price_clp=excluded.price_clp,
+        delivery_days_min=excluded.delivery_days_min,delivery_days_max=excluded.delivery_days_max,santiago_coverage=excluded.santiago_coverage,
+        active=excluded.active,verified_at=now(),rate_scope=excluded.rate_scope,updated_at=now()`,
+      [place.region,place.comuna,carrier,price,min,max,santiago,req.body.active,regional?'region':'comuna']);
+    res.json({message:regional?'Tarifa regional de Blue Express guardada.':'Tarifa de despacho guardada.'});
   }));
 }

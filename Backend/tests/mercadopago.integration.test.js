@@ -41,7 +41,7 @@ test('Mercado Pago: checkout, notificaciones y stock con PostgreSQL real y API s
     await migrate(pool);await migrate(pool);
     await pool.query('TRUNCATE order_email_outbox,mercadopago_payments,mercadopago_checkouts,webpay_payments,order_items,webpay_test_attempts,mercado_pago_attempts,orders,products,shipping_rates_comunas,store_settings,admin_sessions,admin_users RESTART IDENTITY CASCADE');
     await pool.query("INSERT INTO products(name,description,price,category,stock) VALUES('Vela QA','Cera de soja',10000,'Velas de soja',50)");
-    await pool.query("INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,active,delivery_days_min,delivery_days_max,santiago_coverage,verified_at) VALUES('Metropolitana de Santiago','Las Condes','Paket',3500,TRUE,1,3,TRUE,now())");
+    await pool.query("INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,active,delivery_days_min,delivery_days_max,santiago_coverage,verified_at) VALUES('Metropolitana de Santiago','Las Condes','Paket',3000,TRUE,1,3,TRUE,now())");
     await pool.query("INSERT INTO store_settings(key,value) VALUES('business',$1)",[{legalName:'Pruebas MP',rut:'76.123.456-0',legalAddress:'Dirección ficticia',email:'store@example.test',phone:'+56912345678',preparationDays:2,policiesVersion:'mp-qa-v1',returnsInstructions:'Contactar a pruebas'}]);
     await pool.query('INSERT INTO admin_users(email,password_hash) VALUES($1,$2)',['admin@example.test',await bcrypt.hash('Test-password-123456',4)]);
     server=createApp({pool,config,webpayClient:null,mercadoPagoClient:mp}).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
@@ -50,7 +50,7 @@ test('Mercado Pago: checkout, notificaciones y stock con PostgreSQL real y API s
       const r=await fetch(base+path,{method:method||(body?'POST':'GET'),redirect:'manual',headers:{...(origin?{Origin:origin}:{}),...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{}) ,...(key?{'Idempotency-Key':key}:{}),...(cookie?{Cookie:cookie}:{}),...headers},body:body?JSON.stringify(body):undefined});
       return {status:r.status,data:await r.json().catch(()=>null),headers:r.headers};
     }
-    const payload=()=>({customer:{fullName:'Cliente de prueba',email:'customer@example.test',phone:'+56912345678',region:'Metropolitana de Santiago',comuna:'Las Condes',address:'Dirección QA 123',reference:''},items:[{id:1,quantity:1}],expectedTotal:13500,acceptTerms:true,termsVersion:'mp-qa-v1',paymentProvider:'mercadopago'});
+    const payload=()=>({customer:{fullName:'Cliente de prueba',email:'customer@example.test',phone:'+56912345678',region:'Metropolitana de Santiago',comuna:'Las Condes',address:'Dirección QA 123',reference:''},items:[{id:1,quantity:1}],expectedTotal:13000,acceptTerms:true,termsVersion:'mp-qa-v1',paymentProvider:'mercadopago'});
     async function order(){const r=await request('/api/orders',{body:payload(),key:randomUUID()});assert.equal(r.status,201,JSON.stringify(r.data));return r.data;}
     const checkout=async o=>(await pool.query('SELECT * FROM mercadopago_checkouts WHERE order_id=$1',[o.orderId])).rows[0];
     const readOrder=async o=>(await request(`/api/orders/${o.orderId}`,{token:o.accessToken})).data;
@@ -74,7 +74,7 @@ test('Mercado Pago: checkout, notificaciones y stock con PostgreSQL real y API s
     });
     await t.test('doble clic al pagar crea una sola preferencia y no permite saltar a Webpay',async()=>{
       const before=preferenceCount;const [a,b]=await Promise.all([pay(first),pay(first)]);assert.ok([a,b].some(r=>r.status===200));assert.equal(preferenceCount,before+1);firstCheckout=await checkout(first);
-      const pref=preferences.get(firstCheckout.preference_id);assert.equal(pref.items.reduce((n,i)=>n+i.quantity*i.unit_price,0),13500);assert.equal(pref.expires,true);assert.ok(pref.back_urls.success.startsWith(config.mpPublicOrigin));assert.ok(!pref.back_urls.success.includes('localhost'));assert.match(pref.notification_url,/\/api\/payments\/mercadopago\/webhook$/);
+      const pref=preferences.get(firstCheckout.preference_id);assert.equal(pref.items.reduce((n,i)=>n+i.quantity*i.unit_price,0),13000);assert.equal(pref.expires,true);assert.ok(pref.back_urls.success.startsWith(config.mpPublicOrigin));assert.ok(!pref.back_urls.success.includes('localhost'));assert.match(pref.notification_url,/\/api\/payments\/mercadopago\/webhook$/);
       await assert.rejects(()=>startPayment(pool,{create:async()=>{throw new Error('Must not call');}},config,first.orderId));
       assert.equal((await pay(first)).data.url,pref.init_point);assert.equal(preferenceCount,before+1);
     });
@@ -130,7 +130,7 @@ test('Mercado Pago: checkout, notificaciones y stock con PostgreSQL real y API s
       const o=await readOrder(first);assert.equal(o.requiresPaymentReview,true);assert.equal(o.payment.payment_id,String(firstPayment.id));
     });
     await t.test('reembolso y notificación antigua no reponen ni descuentan inventario',async()=>{
-      const stale=await readCanonicalMpPayment(pool,mp,config,String(firstPayment.id));const stock=await product();updatePayment(firstPayment,'refunded');firstPayment.transaction_amount_refunded=13500;assert.equal((await webhook(firstPayment)).status,200);
+      const stale=await readCanonicalMpPayment(pool,mp,config,String(firstPayment.id));const stock=await product();updatePayment(firstPayment,'refunded');firstPayment.transaction_amount_refunded=13000;assert.equal((await webhook(firstPayment)).status,200);
       assert.equal((await readOrder(first)).paymentStatus,'refunded');assert.deepEqual(await product(),stock);
       await applyMpPayment(pool,stale);assert.equal((await readOrder(first)).paymentStatus,'refunded');assert.equal((await pool.query('SELECT provider_status FROM mercadopago_payments WHERE payment_id=$1',[String(firstPayment.id)])).rows[0].provider_status,'refunded');
     });

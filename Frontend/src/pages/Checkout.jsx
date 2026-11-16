@@ -57,7 +57,7 @@ export default function Checkout() {
       <form id="malfi-checkout-form" className="checkout-form" onSubmit={submit}>
         <fieldset disabled={busy||!!created}>
         <fieldset className="payment-options delivery-options"><legend>Entrega del pedido</legend>
-          <label className={`payment-option ${deliveryMethod==='shipping'?'selected':''}`}><input type="radio" name="deliveryMethod" value="shipping" checked={deliveryMethod==='shipping'} onChange={()=>setDeliveryMethod('shipping')}/><span><strong>Despacho a domicilio</strong><small>Costo y plazo según tu comuna</small></span></label>
+          <label className={`payment-option ${deliveryMethod==='shipping'?'selected':''}`}><input type="radio" name="deliveryMethod" value="shipping" checked={deliveryMethod==='shipping'} onChange={()=>setDeliveryMethod('shipping')}/><span><strong>Despacho a domicilio</strong><small>Costo y plazo según tu destino</small></span></label>
           {store?.pickup?.enabled&&<label className={`payment-option ${pickup?'selected':''}`}><input type="radio" name="deliveryMethod" value="pickup" checked={!!pickup} onChange={()=>setDeliveryMethod('pickup')}/><span><strong>Retiro en tienda · Sin costo</strong><small>{store.pickup.address}, {store.pickup.comuna}</small></span></label>}
         </fieldset>
         {pickup&&<div className="checkout-pickup-info" role="status"><strong>Retira en {store.pickup.address}, {store.pickup.comuna}</strong><p>Preparación estimada: hasta {store.business.preparationDays} día(s) hábil(es) desde el pago. Revisa el estado en tu pedido y coordina el retiro con MALFI antes de ir.</p></div>}

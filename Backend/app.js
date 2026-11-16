@@ -6,6 +6,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { createPool } from "./config/database.js";
 import { runtimeConfig, createWebpayClient } from "./config/runtime.js";
 import { registerStoreRoutes } from "./routes/store.js";
+import { resolveShipping } from "./services/shipping.js";
 import { registerCustomerPayments } from "./routes/customerPayments.js";
 import { registerMercadoPagoCheckout } from "./routes/mercadoPagoCheckout.js";
 import { createMercadoPagoClient } from "./services/mercadoPagoClient.js";
@@ -691,7 +692,7 @@ app.post("/api/checkout/quote", async (req, res) => {
 
 
  // =========================================
- // MALFI - COTIZAR DESPACHO POR COMUNA
+ // MALFI - COTIZAR DESPACHO POR DESTINO
  // =========================================
 
 app.get("/api/shipping/quote", async (req, res) => {
@@ -717,33 +718,21 @@ app.get("/api/shipping/quote", async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `SELECT region, comuna, carrier, price_clp
-       FROM shipping_rates_comunas
-       WHERE LOWER(TRIM(region)) = LOWER($1)
-         AND LOWER(TRIM(comuna)) = LOWER($2)
-         AND active = TRUE
-         AND price_clp IS NOT NULL
-         AND verified_at IS NOT NULL
-       LIMIT 1`,
-      [region, comuna]
-    );
-
-    if (result.rows.length === 0) {
+    const shipping = await resolveShipping(pool, region, comuna);
+    if (!shipping) {
       return res.status(409).json({
         code: "SHIPPING_NOT_CONFIGURED",
-        error:
-          "Todavía no tenemos una tarifa de despacho configurada para esta comuna."
+        error: "Todavía no tenemos un despacho habilitado para este destino."
       });
     }
-
-    const shipping = result.rows[0];
 
     res.json({
       region: shipping.region,
       comuna: shipping.comuna,
       carrier: shipping.carrier,
       shippingCost: shipping.price_clp,
+      deliveryDaysMin: shipping.delivery_days_min,
+      deliveryDaysMax: shipping.delivery_days_max,
       currency: "CLP"
     });
 

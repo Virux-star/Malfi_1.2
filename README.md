@@ -8,6 +8,8 @@ El proyecto está preparado para instalarlo y publicarlo como una aplicación co
 
 **Para agregar Mercado Pago a una instalación existente, empieza por [ACTUALIZAR_MERCADOPAGO.md](ACTUALIZAR_MERCADOPAGO.md).** Para una instalación nueva, sigue [PUBLICAR_MALFI.md](PUBLICAR_MALFI.md).
 
+La administración de despachos permite configurar una tarifa de Blue Express por región y un único ajuste de Paket para Santiago urbano, con un precio fijo de $3.000. Las comunas se usan para validar la dirección y elegir el transportista; no es necesario cargar precios de Blue Express por comuna. La migración `007_regional_shipping.sql` conserva los pedidos históricos y las tarifas anteriores de Blue Express hasta que se confirme una tarifa regional. El catálogo de comunas proviene de [BCN](https://www.bcn.cl/siit/mapoteca/comunas); la cobertura de Santiago urbano sigue las [condiciones de Paket](https://paketex.com/wp-content/uploads/2025/03/Terminos-y-Condiciones.pdf).
+
 ## Qué incluye
 
 - Catálogo real desde PostgreSQL; categorías fijas: Velas de soja, Set de velas, Decoración de concreto, Talleres e Insumos.
@@ -17,7 +19,7 @@ El proyecto está preparado para instalarlo y publicarlo como una aplicación co
 - Mercado Pago Checkout Pro con preferencias: selección en checkout, notificaciones firmadas, validación contra la API, comprobante y conciliación.
 - Reservas de inventario; expiración de pedidos sin intento de cobro o con fallos definitivos. Los pagos inciertos conservan su reserva hasta conciliarse.
 - Confirmación de compra y aviso a administración por Resend; cola persistente, reintentos con clave de idempotencia y revisión de resultados inciertos.
-- Administración con cuenta propia, productos, fotografías en Cloudinary, pedidos, seguimiento, tarifas por comuna y datos del negocio.
+- Administración con cuenta propia, productos, fotografías en Cloudinary, pedidos, seguimiento, tarifas regionales de Blue Express, tarifa única de Paket y datos del negocio.
 - Información de despachos, términos de compra, retracto, garantía legal y privacidad con datos configurables.
 - Migraciones, Dockerfile, configuración de Render, verificador de configuración y pruebas automatizadas.
 
@@ -101,6 +103,6 @@ Los archivos antiguos de laboratorio se conservan para referencia. El servidor n
 
 ## Alcance operativo
 
-El sistema calcula el despacho con las tarifas por comuna que tú verificas y configuras. No consulta precios en vivo de Paket o Blue Express ni genera etiquetas; debes contratar y gestionar esos despachos con los transportistas. Verifica que la tarifa cubre el peso y volumen de tus carritos.
+El sistema calcula el despacho con la tarifa regional de Blue Express que tú verificas y configuras, o con la tarifa fija de $3.000 de Paket para Santiago urbano. No consulta precios en vivo de Paket o Blue Express ni genera etiquetas; debes contratar y gestionar esos despachos con los transportistas. Verifica que la tarifa cubre el peso y volumen de tus carritos.
 
 La emisión tributaria de boletas/facturas, la contratación del alojamiento, la afiliación/validación de Transbank y los reembolsos bancarios se gestionan con sus proveedores. La aplicación no los da por completados.

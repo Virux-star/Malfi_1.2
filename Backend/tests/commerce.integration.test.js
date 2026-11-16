@@ -26,7 +26,7 @@ test('recorrido de compra y administración con PostgreSQL real y banco simulado
     await migrate(pool);await migrate(pool);
     await pool.query('TRUNCATE order_email_outbox,webpay_payments,order_items,webpay_test_attempts,mercado_pago_attempts,orders,products,shipping_rates_comunas,store_settings,admin_sessions,admin_users RESTART IDENTITY CASCADE');
     await pool.query("INSERT INTO products(name,description,price,category,stock) VALUES('Vela de soja','Vela aromática de cera de soja',10000,'Velas de soja',20),('Pieza de concreto','Decoración',7000,'Decoración de concreto',1)");
-    await pool.query("INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,active,delivery_days_min,delivery_days_max,santiago_coverage,verified_at) VALUES('Metropolitana de Santiago','Las Condes','Paket',3500,TRUE,1,3,TRUE,now()),('Metropolitana de Santiago','Melipilla','Blue Express',6500,TRUE,3,5,FALSE,now())");
+    await pool.query("INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,active,delivery_days_min,delivery_days_max,santiago_coverage,verified_at) VALUES('Metropolitana de Santiago','Las Condes','Paket',3000,TRUE,1,3,TRUE,now()),('Metropolitana de Santiago','Melipilla','Blue Express',6500,TRUE,3,5,FALSE,now())");
     const business={legalName:'Tienda de pruebas',rut:'76.123.456-0',legalAddress:'Dirección ficticia QA',email:'store@example.test',phone:'+56912345678',preparationDays:2,policiesVersion:'qa-v1',returnsInstructions:'Contactar al negocio'};
     await pool.query("INSERT INTO store_settings(key,value) VALUES('business',$1)",[business]);
     await pool.query('INSERT INTO admin_users(email,password_hash) VALUES($1,$2)',['admin@example.test',await bcrypt.hash('Test-password-123456',4)]);
@@ -37,7 +37,7 @@ test('recorrido de compra y administración con PostgreSQL real y banco simulado
       const r=await fetch(base+path,{method,redirect:'manual',headers:{Origin:origin,...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{}) ,...(key?{'Idempotency-Key':key}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});
       return {status:r.status,data:raw?await r.text():await r.json().catch(()=>null),headers:r.headers};
     };
-    const payload=(id=1,quantity=1)=>({customer:{fullName:'Cliente QA',email:'customer@example.test',phone:'+56912345678',region:'Metropolitana de Santiago',comuna:'Las Condes',address:'Dirección QA 123',reference:''},items:[{id,quantity}],expectedTotal:(id===1?10000:7000)*quantity+3500,acceptTerms:true,termsVersion:'qa-v1'});
+    const payload=(id=1,quantity=1)=>({customer:{fullName:'Cliente QA',email:'customer@example.test',phone:'+56912345678',region:'Metropolitana de Santiago',comuna:'Las Condes',address:'Dirección QA 123',reference:''},items:[{id,quantity}],expectedTotal:(id===1?10000:7000)*quantity+3000,acceptTerms:true,termsVersion:'qa-v1'});
     let paidOrder,paidPayment,adminCookie;
     await t.test('bloquea orígenes ajenos y protege datos de administración',async()=>{
       assert.equal((await request('/api/orders',{body:payload(),key:randomUUID(),origin:'https://evil.test'})).status,403);
@@ -106,7 +106,7 @@ test('recorrido de compra y administración con PostgreSQL real y banco simulado
       // INITIALIZED remains reserved; the same current token is reusable while fresh.
     });
     await t.test('administración valida tarifas reales y datos del negocio',async()=>{
-      const body={region:'Metropolitana de Santiago',comuna:'Comuna QA',carrier:'Paket',price:3500,daysMin:1,daysMax:3,santiagoCoverage:true,active:true,confirmedRealRate:true};
+      const body={region:'Metropolitana de Santiago',comuna:'Providencia',carrier:'Paket',price:3000,daysMin:1,daysMax:3,santiagoCoverage:true,active:true,confirmedRealRate:true};
       assert.equal((await request('/api/admin/shipping',{cookie:adminCookie,body:{...body,confirmedRealRate:false}})).status,400);
       assert.equal((await request('/api/admin/shipping',{cookie:adminCookie,body:{...body,price:''}})).status,400);
       assert.equal((await request('/api/admin/shipping',{cookie:adminCookie,body:{...body,region:'Maule'}})).status,400);

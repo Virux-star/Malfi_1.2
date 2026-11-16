@@ -2,6 +2,7 @@ import { providerMode, providerAvailable } from '../config/paymentProviders.js';
 import { startMercadoPago, reconcileMpCheckout } from '../services/mercadoPago.js';
 import { rateLimit } from 'express-rate-limit';
 import { readiness } from '../services/store.js';
+import { resolveShipping } from '../services/shipping.js';
 import { pickupLocation } from '../config/fulfillment.js';
 import { digest, orderToken, validId, fail, customerOrder, startPayment, settlePayment, validBank, bankApproved, reconcilePayment } from '../services/payments.js';
 const uuid = v => typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -58,7 +59,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
           subtotal+=p.price*i.quantity;
         }
         const rate=pickup?{...pickupLocation,carrier:'Retiro en tienda',price_clp:0,delivery_days_min:0,delivery_days_max:0}
-          :(await client.query(`SELECT * FROM shipping_rates_comunas WHERE lower(trim(region))=lower($1) AND lower(trim(comuna))=lower($2) AND active=TRUE AND price_clp IS NOT NULL AND verified_at IS NOT NULL FOR SHARE`,[customer.region,customer.comuna])).rows[0];
+          :await resolveShipping(client,customer.region,customer.comuna,{lock:true});
         if (!rate) throw fail('No tenemos despacho configurado para este destino.');
         const total=subtotal+rate.price_clp;
         if (!Number.isSafeInteger(total)||total<1||total>999999999) throw fail('El monto del pedido supera el límite permitido.',400);

@@ -51,7 +51,7 @@ test('retiro en tienda: entrega, pagos, correos y administración', {skip:!datab
     });
     await t.test('valida modalidad y total, fija el punto de retiro y evita reservas duplicadas',async()=>{
       assert.equal((await request('/api/orders',{body:{...payload(),deliveryMethod:'fake'},key:randomUUID()})).status,400);
-      assert.equal((await request('/api/orders',{body:{...payload(),expectedTotal:13500},key:randomUUID()})).status,409);
+      assert.equal((await request('/api/orders',{body:{...payload(),expectedTotal:13000},key:randomUUID()})).status,409);
       const key=randomUUID(),body={...payload(),paymentProvider:'mercadopago',customer:{...payload().customer,address:'No es el punto de retiro',region:'Maule',comuna:'Otra',reference:'No guardar'}};
       const [a,b]=await Promise.all([request('/api/orders',{body,key}),request('/api/orders',{body,key})]);
       assert.equal(a.status,201);assert.equal(b.status,201);assert.equal(a.data.orderId,b.data.orderId);mpOrder=a.data;
@@ -61,11 +61,11 @@ test('retiro en tienda: entrega, pagos, correos y administración', {skip:!datab
       assert.equal((await pool.query('SELECT reserved_stock FROM products WHERE id=1')).rows[0].reserved_stock,2);
     });
     await t.test('los despachos conservan su dirección, tarifa y modalidad por defecto',async()=>{
-      const body={...payload(),customer:{...payload().customer,region:'Metropolitana de Santiago',comuna:'Las Condes',address:'Casa del cliente QA'}};delete body.deliveryMethod;body.expectedTotal=13500;
+      const body={...payload(),customer:{...payload().customer,region:'Metropolitana de Santiago',comuna:'Las Condes',address:'Casa del cliente QA'}};delete body.deliveryMethod;body.expectedTotal=13000;
       assert.equal((await request('/api/orders',{body,key:randomUUID()})).status,409);
-      await pool.query("INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,active,delivery_days_min,delivery_days_max,santiago_coverage,verified_at) VALUES('Metropolitana de Santiago','Las Condes','Paket',3500,TRUE,1,3,TRUE,now())");
+      await pool.query("INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,active,delivery_days_min,delivery_days_max,santiago_coverage,verified_at) VALUES('Metropolitana de Santiago','Las Condes','Paket',3000,TRUE,1,3,TRUE,now())");
       const r=await request('/api/orders',{body,key:randomUUID()});assert.equal(r.status,201,JSON.stringify(r.data));shippingOrder=r.data;
-      const o=(await read(shippingOrder)).data;assert.equal(o.deliveryMethod,'shipping');assert.equal(o.shipping,3500);assert.equal(o.pickupAddress,null);
+      const o=(await read(shippingOrder)).data;assert.equal(o.deliveryMethod,'shipping');assert.equal(o.shipping,3000);assert.equal(o.pickupAddress,null);
     });
     await t.test('Webpay confirma retiro por el subtotal y descuenta stock una sola vez',async()=>{
       const p=await request(`/api/orders/${webpayOrder.orderId}/pay`,{method:'POST',token:webpayOrder.accessToken});assert.equal(p.status,200);assert.equal(banks.get(p.data.token).amount,10000);
