@@ -60,4 +60,6 @@ test('el cliente Flow usa POST form-urlencoded y firma GET sin reintentar creaci
   await assert.rejects(()=>rejected.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_401_CODE_1'&&!JSON.stringify(e).includes('private-key'));
   const unsafe=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:400,json:async()=>({code:'private-key',message:'private-key'})})});
   await assert.rejects(()=>unsafe.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_400'&&!JSON.stringify(e).includes('private-key'));
+  const parameter=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:400,json:async()=>({code:1620,message:'timeout invalid: private-key https://secret.example/secret'})})});
+  await assert.rejects(()=>parameter.createPayment({amount:50000}),e=>e.flowDiagnostic==='HTTP_400_CODE_1620_FIELD_TIMEOUT'&&!JSON.stringify(e).includes('private-key')&&!JSON.stringify(e).includes('secret.example'));
 });

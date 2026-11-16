@@ -77,7 +77,7 @@ export async function startFlow(pool, client, config, id) {
     if (!saved.rowCount) throw fail('La respuesta de Flow no coincide con el intento guardado.');
     return { provider: 'flow', mode: a.mode, url: url.toString() };
   } catch (error) {
-    const diagnostic=/^(?:NETWORK|CREATE_RESPONSE_INVALID|HTTP_\d{1,3}(?:_CODE_-?\d{1,8})?)$/.test(error?.flowDiagnostic||'')?error.flowDiagnostic:'UNCONFIRMED';
+    const diagnostic=/^(?:NETWORK|CREATE_RESPONSE_INVALID|HTTP_\d{1,3}(?:_CODE_-?\d{1,8})?(?:_FIELD_(?:COMMERCEORDER|SUBJECT|CURRENCY|AMOUNT|EMAIL|PAYMENTMETHOD|URLCONFIRMATION|URLRETURN|TIMEOUT|APIKEY|SECRETKEY|SIGNATURE|MERCHANT|ACCOUNT))?)$/.test(error?.flowDiagnostic||'')?error.flowDiagnostic:'UNCONFIRMED';
     console.error('Inicio Flow pendiente:',a.id,diagnostic);
     await pool.query(`UPDATE flow_checkouts SET state='review',last_error='Creación sin resultado confirmado.',updated_at=now()
       WHERE id=$1 AND state='starting'`, [a.id]);

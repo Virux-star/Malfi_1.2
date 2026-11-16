@@ -24,7 +24,11 @@ export function createFlowClient(config, { fetchImpl = fetch } = {}) {
     if (!response.ok || !data || typeof data !== 'object' || Array.isArray(data) || data.code !== undefined) {
       const status=Number.isInteger(response.status)?response.status:0;
       const code=/^-?\d{1,8}$/.test(String(data?.code))?`_CODE_${data.code}`:'';
-      throw Object.assign(fail(`No se pudo consultar Flow (HTTP ${status}).`, 502), { flowDiagnostic: `HTTP_${status}${code}` });
+      // Extract only public parameter names, never the provider's raw message or values.
+      const message=typeof data?.message==='string'?data.message:'';
+      const fields=['commerceOrder','subject','currency','amount','email','paymentMethod','urlConfirmation','urlReturn','timeout','apiKey','secretKey','signature','merchant','account'];
+      const field=fields.find(name=>new RegExp(`\\b${name}\\b`,'i').test(message));
+      throw Object.assign(fail(`No se pudo consultar Flow (HTTP ${status}).`, 502), { flowDiagnostic: `HTTP_${status}${code}${field?'_FIELD_'+field.toUpperCase():''}` });
     }
     return data;
   }
