@@ -1,5 +1,6 @@
 import { providerMode, providerAvailable } from '../config/paymentProviders.js';
 import { startMercadoPago, reconcileMpCheckout } from '../services/mercadoPago.js';
+import { startFlow, reconcileFlowCheckout, flowCredentialId } from '../services/flow.js';
 import { rateLimit } from 'express-rate-limit';
 import { readiness } from '../services/store.js';
 import { resolveShipping, shippingPrice } from '../services/shipping.js';
@@ -10,7 +11,7 @@ const tokenFrom = req => (req.get('Authorization') || '').replace(/^Bearer /,'')
 const handler = fn => async(req,res,next)=>{try {await fn(req,res);}catch(e){if(e.status)res.status(e.status).json({error:e.message});else next(e);}};
 const limited = limit => rateLimit({windowMs:15*60_000,limit,standardHeaders:'draft-8',legacyHeaders:false,message:{error:'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.'}});
 
-export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClient) {
+export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClient,flowClient) {
   app.post('/api/orders',limited(15),handler(async(req,res)=>{
     const key=req.get('Idempotency-Key');
     if (!uuid(key)) throw fail('Recarga la página e intenta nuevamente.',400);
@@ -33,8 +34,8 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     if (items.some(i=>!Number.isInteger(i.id)||i.id<1||i.id>2147483647||!Number.isInteger(i.quantity)||i.quantity<1||i.quantity>100)||new Set(items.map(i=>i.id)).size!==items.length) throw fail('Productos o cantidades no válidos.',400);
     if (req.body.acceptTerms!==true) throw fail('Debes aceptar los términos y la política de privacidad.',400);
     const provider=req.body.paymentProvider||'webpay';
-    if (!['webpay','mercadopago'].includes(provider)) throw fail('Elige un medio de pago válido.',400);
-    const fingerprint=digest(JSON.stringify({customer,items,termsVersion:req.body.termsVersion,...(provider==='mercadopago'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
+    if (!['webpay','mercadopago','flow'].includes(provider)) throw fail('Elige un medio de pago válido.',400);
+    const fingerprint=digest(JSON.stringify({customer,items,termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
     const token=orderToken(key,config);
     const client=await pool.connect();
     let order;
@@ -86,7 +87,14 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     const o=await customerOrder(pool,req.params.id,tokenFrom(req));
     let p,canPay=false,requiresPaymentReview=false;
     const payable=config.enabled && providerAvailable(config,o.payment_provider) && providerMode(config,o.payment_provider)===o.payment_mode && o.status==='pending_payment' && o.payment_status==='pending' && o.inventory_reserved && new Date(o.expires_at)>new Date();
-    if (o.payment_provider==='mercadopago') {
+    if (o.payment_provider==='flow') {
+      const checkout=(await pool.query('SELECT * FROM flow_checkouts WHERE order_id=$1',[o.id])).rows[0];
+      requiresPaymentReview=checkout?.state==='review';
+      p=checkout?{provider:'flow',state:checkout.state,mode:checkout.mode,reference:checkout.flow_order,
+        flow_order:checkout.flow_order,provider_status:checkout.provider_status,payment_method_id:checkout.payment_method,
+        bank_transaction_date:checkout.confirmed_at,amount_clp:checkout.amount_clp}:null;
+      canPay=Boolean(payable&&(!checkout||(checkout.credential_id===flowCredentialId(config)&&checkout.state==='created'&&checkout.checkout_url&&new Date(checkout.expires_at)>new Date())));
+    } else if (o.payment_provider==='mercadopago') {
       const checkout=(await pool.query('SELECT * FROM mercadopago_checkouts WHERE order_id=$1',[o.id])).rows[0];
       let payment;
       if (checkout) payment=(await pool.query(`SELECT * FROM mercadopago_payments WHERE checkout_id=$1 ORDER BY (payment_id=$2) DESC,observed_at DESC LIMIT 1`,[checkout.id,checkout.settled_payment_id||''])).rows[0];
@@ -110,7 +118,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
   app.post('/api/orders/:id/pay',limited(20),handler(async(req,res)=>{
     const order=await customerOrder(pool,req.params.id,tokenFrom(req));
     if (!config.enabled) throw fail('Los pagos están temporalmente deshabilitados.',503);
-    res.json(order.payment_provider==='mercadopago'?await startMercadoPago(pool,mpClient,config,req.params.id):await startPayment(pool,tx,config,req.params.id));
+    res.json(order.payment_provider==='flow'?await startFlow(pool,flowClient,config,req.params.id):order.payment_provider==='mercadopago'?await startMercadoPago(pool,mpClient,config,req.params.id):await startPayment(pool,tx,config,req.params.id));
   }));
 
   const redirect=async(res,orderId)=>{
@@ -157,10 +165,13 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     const mp=(await pool.query(`SELECT c.id,c.mode,c.state,c.preference_id AS buy_order,c.amount_clp,p.provider_status AS bank_status,
       c.created_at,c.updated_at,c.last_error,p.payment_id,p.card_last4,c.settled_payment_id
       FROM mercadopago_checkouts c LEFT JOIN LATERAL(SELECT payment_id,provider_status,card_last4 FROM mercadopago_payments WHERE checkout_id=c.id ORDER BY (payment_id=c.settled_payment_id) DESC,observed_at DESC LIMIT 1)p ON TRUE WHERE c.order_id=$1`,[req.params.id])).rows;
-    res.json([...payments.map(p=>({...p,provider:'webpay'})),...mp.map(p=>({...p,provider:'mercadopago'}))]);
+    const flow=(await pool.query(`SELECT id,mode,state,flow_order AS buy_order,amount_clp,provider_status AS bank_status,created_at,updated_at,last_error FROM flow_checkouts WHERE order_id=$1`,[req.params.id])).rows;
+    res.json([...payments.map(p=>({...p,provider:'webpay'})),...mp.map(p=>({...p,provider:'mercadopago'})),...flow.map(p=>({...p,provider:'flow'}))]);
   }));
   app.post('/api/admin/orders/:id/reconcile',requireAdmin,limited(30),handler(async(req,res)=>{
     if(!validId(req.params.id))throw fail('ID no válido.',400);
+    const flow=(await pool.query('SELECT * FROM flow_checkouts WHERE order_id=$1',[req.params.id])).rows[0];
+    if(flow){const outcome=await reconcileFlowCheckout(pool,flowClient,config,flow);return res.json({outcome,message:outcome==='paid'?'Flow confirmó el pago.':outcome==='failed'?'Flow confirmó el rechazo o anulación. La reserva se liberó.':'El movimiento de Flow sigue pendiente de revisión. No se liberó la reserva.'});}
     const mp=(await pool.query('SELECT * FROM mercadopago_checkouts WHERE order_id=$1',[req.params.id])).rows[0];
     if(mp){const outcome=await reconcileMpCheckout(pool,mpClient,config,mp);return res.json({outcome,message:outcome==='paid'?'Mercado Pago confirmó el pago.':outcome==='failed'?'Mercado Pago informó un intento rechazado. La reserva se conserva para volver a intentarlo o revisar el checkout.':'El movimiento de Mercado Pago sigue pendiente de revisión. No se liberó la reserva.'});}
     const payment=(await pool.query('SELECT * FROM webpay_payments WHERE order_id=$1 ORDER BY created_at DESC LIMIT 1',[req.params.id])).rows[0];

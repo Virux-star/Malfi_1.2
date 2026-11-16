@@ -11,6 +11,8 @@ import { shippingPolicy } from "./config/fulfillment.js";
 import { registerCustomerPayments } from "./routes/customerPayments.js";
 import { registerMercadoPagoCheckout } from "./routes/mercadoPagoCheckout.js";
 import { createMercadoPagoClient } from "./services/mercadoPagoClient.js";
+import { createFlowClient } from "./services/flowClient.js";
+import { registerFlowCheckout } from "./routes/flowCheckout.js";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -25,7 +27,7 @@ import { registerWebpayTest } from "./routes/webpayTest.js";
 import { registerPendingPaymentsAdmin }
   from "./routes/pendingPaymentsAdmin.js";
 
-export function createApp({ pool = createPool(), webpayClient, mercadoPagoClient, config = runtimeConfig() } = {}) {
+export function createApp({ pool = createPool(), webpayClient, mercadoPagoClient, flowClient, config = runtimeConfig() } = {}) {
 const app = express();
 app.disable("x-powered-by");
 app.use((req, res, next) => {
@@ -59,7 +61,9 @@ app.use((req, res, next) => {
       req.path === "/api/webhooks/mercadopago" ||
       req.path === "/api/webpay/test/return" ||
       req.path === "/api/payments/webpay/return" ||
-      req.path === "/api/payments/mercadopago/webhook"
+      req.path === "/api/payments/mercadopago/webhook" ||
+      req.path === "/api/payments/flow/confirmation" ||
+      req.path === "/api/payments/flow/return"
     );
 
   if (isPaymentCallback) {
@@ -188,7 +192,9 @@ if (!config.production) registerWebpayTest(app, pool, requireAdmin);
 registerStoreRoutes(app, pool, requireAdmin, config);
 const mpClient=mercadoPagoClient===undefined?createMercadoPagoClient(config):mercadoPagoClient;
 registerMercadoPagoCheckout(app,pool,config,mpClient);
-registerCustomerPayments(app, pool, requireAdmin, config, webpayClient === undefined ? createWebpayClient(config) : webpayClient,mpClient);
+const flow=flowClient===undefined?createFlowClient(config):flowClient;
+registerFlowCheckout(app,pool,config,flow);
+registerCustomerPayments(app, pool, requireAdmin, config, webpayClient === undefined ? createWebpayClient(config) : webpayClient,mpClient,flow);
 registerPendingPaymentsAdmin(
   app,
   pool,
@@ -1401,6 +1407,8 @@ app.patch(
         requestedStatus === "cancelled" &&
         order.inventory_reserved
       ) {
+        const flowCheckout = await client.query("SELECT 1 FROM flow_checkouts WHERE order_id=$1 AND state<>'failed'", [id]);
+        if (flowCheckout.rowCount) throw orderError("Este pedido tiene un pago de Flow pendiente. Consulta y concilia su resultado antes de cancelar.",409);
         const mpCheckout = await client.query("SELECT 1 FROM mercadopago_checkouts WHERE order_id=$1", [id]);
         if (mpCheckout.rowCount) throw orderError("Este pedido tiene un checkout de Mercado Pago. Verifica y resuelve el movimiento en el proveedor antes de liberar su reserva.",409);
         const liveAttempt = await client.query("SELECT 1 FROM webpay_payments WHERE order_id=$1 AND state NOT IN ('failed','cancelled')", [id]);

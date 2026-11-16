@@ -15,7 +15,7 @@ export async function readiness(pool, config) {
   const issues = [];
   if (!config.enabled) issues.push('Activa CHECKOUT_ENABLED después de completar la configuración.');
   const options=paymentProviders(config);
-  if (!options.providers.length) issues.push('Configura al menos un medio de pago disponible: Webpay o Mercado Pago.');
+  if (!options.providers.length) issues.push('Configura al menos un medio de pago disponible: Mercado Pago o Flow.');
   for (const field of ['legalName','rut','legalAddress','email','phone']) {
     if (!store[field]) issues.push(`Completa el dato del negocio: ${field}.`);
   }

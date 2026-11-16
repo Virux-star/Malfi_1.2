@@ -21,6 +21,12 @@ export function getOrderAccess(id) {
   try{return sessionStorage.getItem(`malfi_order_${id}`)||'';}catch{return '';}
 }
 export function openPayment(payment) {
+  if(payment.provider==='flow') {
+    const u=new URL(payment.url);
+    const hosts=payment.mode==='production'?['www.flow.cl','flow.cl','api.flow.cl']:payment.mode==='integration'?['sandbox.flow.cl']:[];
+    if(u.protocol!=='https:'||u.username||u.password||u.port||u.hash||!hosts.includes(u.hostname)||!/^[A-Za-z0-9_-]{10,200}$/.test(u.searchParams.get('token')||''))throw new Error('La dirección de Flow no es válida.');
+    window.location.assign(u.toString());return;
+  }
   if(payment.provider!=='mercadopago')return openWebpay(payment);
   const u=new URL(payment.url);
   if(u.protocol!=='https:'||u.username||u.password||u.port||!['www.mercadopago.cl','www.mercadopago.com','sandbox.mercadopago.cl','sandbox.mercadopago.com'].includes(u.hostname))throw new Error('La dirección de Mercado Pago no es válida.');

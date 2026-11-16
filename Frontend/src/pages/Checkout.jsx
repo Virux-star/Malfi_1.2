@@ -74,7 +74,7 @@ export default function Checkout() {
         </div>
         {!pickup&&<p className="checkout-form-note">Mostramos los destinos con despacho disponible. Si tu comuna no aparece, <a href="/#contacto">contáctanos</a> antes de comprar. También puedes elegir retiro en tienda sin costo.</p>}
         <fieldset className="payment-options"><legend>Forma de pago</legend>
-          {providers.map(p=><label className={`payment-option ${provider?.id===p.id?'selected':''}`} key={p.id}><input type="radio" name="paymentProvider" value={p.id} checked={provider?.id===p.id} onChange={()=>setSelectedProvider(p.id)}/><span><strong>{p.label}</strong><small>{p.id==='webpay'?'Tarjetas a través de Webpay Plus':'Continúa tu compra en Mercado Pago'}{p.mode==='integration'?' · Pruebas':''}</small></span></label>)}
+          {providers.map(p=><label className={`payment-option ${provider?.id===p.id?'selected':''}`} key={p.id}><input type="radio" name="paymentProvider" value={p.id} checked={provider?.id===p.id} onChange={()=>setSelectedProvider(p.id)}/><span><strong>{p.label}</strong><small>{p.id==='webpay'?'Tarjetas a través de Webpay Plus':`Continúa tu compra en ${p.label}`}{p.mode==='integration'?' · Pruebas':''}</small></span></label>)}
           {!providers.length&&<p className="muted">Los medios de pago se habilitarán al abrir las compras.</p>}
         </fieldset>
         <label className="terms-check"><input type="checkbox" required checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>He leído y acepto los <a href="/terminos" target="_blank" rel="noreferrer">términos de compra</a> y la <a href="/privacidad" target="_blank" rel="noreferrer">política de privacidad</a>.</span></label>
@@ -89,7 +89,7 @@ export default function Checkout() {
       {pickup&&<p className="checkout-shipping-note">Retiro en {store.pickup.address}, {store.pickup.comuna}. Coordina el retiro cuando el pedido esté listo.</p>}
       {!pickup&&shipping&&<p className="checkout-shipping-note">Entrega estimada: {shipping.delivery_days_min+store.business.preparationDays} a {shipping.delivery_days_max+store.business.preparationDays} días hábiles desde el pago, incluyendo preparación.</p>}
       {total!==null&&<div className="checkout-summary-line checkout-total"><strong>Total a pagar</strong><strong>{clp(total)}</strong></div>}
-      <p className="checkout-form-note">Precios en pesos chilenos, con impuestos incluidos. Completarás el pago directamente en Mercado Pago.</p>
+      <p className="checkout-form-note">Precios en pesos chilenos, con impuestos incluidos. Completarás el pago directamente en {provider?.label||'la plataforma elegida'}.</p>
       </>}
       <button className="checkout-pay-button" type="submit" form="malfi-checkout-form" disabled={busy||!quote||!deliveryAvailable||!accepted||!store?.checkoutAvailable||!provider||!!created}>{busy?'Preparando pago…':created?'Pedido registrado':`Pagar con ${provider?.label||'el medio elegido'}`}</button>
       {created&&<div className="checkout-order-success"><h3>Conservamos tu pedido #{created.orderId}</h3><p>Consulta su resultado antes de repetir la compra.</p><a className="text-link" href={`/pedido/${created.orderId}#token=${created.accessToken}`}>Consultar pedido y continuar</a></div>}

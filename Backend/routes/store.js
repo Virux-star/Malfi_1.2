@@ -21,7 +21,7 @@ export function registerStoreRoutes(app,pool,requireAdmin,config) {
   }));
   app.get('/api/admin/readiness',requireAdmin,wrap(async(req,res)=>{
     const r=await readiness(pool,config);
-    res.json({ready:r.ready,issues:r.issues,mode:r.mode,mpMode:config.mpMode||'disabled',providerIssues:r.providerIssues,emailMode:config.emailMode,cloudinaryConfigured:!!(process.env.CLOUDINARY_CLOUD_NAME&&process.env.CLOUDINARY_API_KEY&&process.env.CLOUDINARY_API_SECRET)});
+    res.json({ready:r.ready,issues:r.issues,mode:r.mode,mpMode:config.mpMode||'disabled',flowMode:config.flowMode||'disabled',providerIssues:r.providerIssues,emailMode:config.emailMode,cloudinaryConfigured:!!(process.env.CLOUDINARY_CLOUD_NAME&&process.env.CLOUDINARY_API_KEY&&process.env.CLOUDINARY_API_SECRET)});
   }));
   app.get('/api/admin/settings',requireAdmin,wrap(async(req,res)=>res.json(await getStore(pool))));
   app.put('/api/admin/settings',requireAdmin,wrap(async(req,res)=>{

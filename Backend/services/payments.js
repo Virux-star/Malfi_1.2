@@ -120,13 +120,14 @@ export async function releaseExpiredOrders(pool) {
     AND NOT EXISTS(SELECT 1 FROM webpay_payments p WHERE p.order_id=o.id AND p.state<>'failed')
     AND NOT EXISTS(SELECT 1 FROM webpay_test_attempts w WHERE w.order_id=o.id)
     AND NOT EXISTS(SELECT 1 FROM mercado_pago_attempts m WHERE m.order_id=o.id)
-    AND NOT EXISTS(SELECT 1 FROM mercadopago_checkouts m WHERE m.order_id=o.id) LIMIT 50`)).rows;
+    AND NOT EXISTS(SELECT 1 FROM mercadopago_checkouts m WHERE m.order_id=o.id)
+    AND NOT EXISTS(SELECT 1 FROM flow_checkouts f WHERE f.order_id=o.id AND f.state<>'failed') LIMIT 50`)).rows;
   for (const {id} of candidates) {
     const client=await pool.connect();
     try {
       await client.query('BEGIN');
       const check=await client.query(`SELECT id FROM orders o WHERE id=$1 AND status='pending_payment' AND payment_status='pending' AND inventory_reserved=TRUE AND expires_at<now() FOR UPDATE`,[id]);
-      const active=await client.query("SELECT 1 FROM webpay_payments WHERE order_id=$1 AND state<>'failed' UNION ALL SELECT 1 FROM webpay_test_attempts WHERE order_id=$1 UNION ALL SELECT 1 FROM mercado_pago_attempts WHERE order_id=$1 UNION ALL SELECT 1 FROM mercadopago_checkouts WHERE order_id=$1",[id]);
+      const active=await client.query("SELECT 1 FROM webpay_payments WHERE order_id=$1 AND state<>'failed' UNION ALL SELECT 1 FROM webpay_test_attempts WHERE order_id=$1 UNION ALL SELECT 1 FROM mercado_pago_attempts WHERE order_id=$1 UNION ALL SELECT 1 FROM mercadopago_checkouts WHERE order_id=$1 UNION ALL SELECT 1 FROM flow_checkouts WHERE order_id=$1 AND state<>'failed'",[id]);
       if (check.rowCount && !active.rowCount) {
         const items=(await client.query('SELECT product_id,SUM(quantity)::int AS quantity FROM order_items WHERE order_id=$1 GROUP BY product_id ORDER BY product_id',[id])).rows;
         if (!items.length) throw fail('Pedido sin productos.');

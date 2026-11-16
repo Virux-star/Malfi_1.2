@@ -8,7 +8,7 @@ export function publicHttpsOrigin(value) {
   } catch {return false;}
 }
 export function providerMode(config,provider='webpay') {
-  return provider==='mercadopago'?(config.mpMode||'disabled'):config.mode;
+  return provider==='flow'?(config.flowMode||'disabled'):provider==='mercadopago'?(config.mpMode||'disabled'):config.mode;
 }
 export function paymentProviders(config) {
   const providers=[],issues=[];
@@ -25,6 +25,16 @@ export function paymentProviders(config) {
     if(config.production&&config.mpMode!=='production'&&!config.allowIntegration)missing.push('modo productivo o ALLOW_INTEGRATION_CHECKOUT para staging');
     if(missing.length)issues.push(`Mercado Pago: completa ${missing.join(', ')}.`);
     else providers.push({id:'mercadopago',label:'Mercado Pago',mode:config.mpMode});
+  }
+  if (config.flowMode && config.flowMode!=='disabled') {
+    const missing=[];
+    if(!config.flowApiKey)missing.push('FLOW_API_KEY');
+    if(!config.flowSecretKey)missing.push('FLOW_SECRET_KEY');
+    if(!publicHttpsOrigin(config.flowPublicOrigin||''))missing.push('FLOW_PUBLIC_BASE_URL (origen HTTPS público)');
+    if(config.production&&config.flowMode==='integration'&&(!config.allowIntegration||config.emailMode!=='test'||providers.some(p=>p.mode==='production')))
+      missing.push('una instalación separada de pruebas con ALLOW_INTEGRATION_CHECKOUT=true y EMAIL_MODE=test, sin pasarelas productivas');
+    if(missing.length)issues.push(`Flow: completa ${missing.join(', ')}.`);
+    else providers.push({id:'flow',label:'Flow',mode:config.flowMode});
   }
   return {providers,issues};
 }

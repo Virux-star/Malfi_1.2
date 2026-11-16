@@ -1,4 +1,5 @@
 import { reconcileMpCheckout } from './mercadoPago.js';
+import { reconcileFlowCheckout, flowCredentialId } from './flow.js';
 import { Resend } from 'resend';
 import { compactOrderEmail } from './compactOrderEmail.js';
 import { reconcilePayment, releaseExpiredOrders, orderToken } from './payments.js';
@@ -58,7 +59,7 @@ export async function sendEmailsOnce(pool,config,provider) {
     }
   }
 }
-export async function commerceCycle(pool,config,tx,{emailProvider,mercadoPagoClient}={}) {
+export async function commerceCycle(pool,config,tx,{emailProvider,mercadoPagoClient,flowClient}={}) {
   if (tx) {
     const payments=(await pool.query(`SELECT * FROM webpay_payments WHERE mode=$1 AND state IN ('starting','created','processing','authorized','review') AND finalized_at IS NULL AND updated_at<now()-interval '60 seconds' ORDER BY updated_at LIMIT 30`,[config.mode])).rows;
     for (const p of payments) {
@@ -73,12 +74,18 @@ export async function commerceCycle(pool,config,tx,{emailProvider,mercadoPagoCli
     const checkouts=(await pool.query(`SELECT * FROM mercadopago_checkouts WHERE mode=$1 AND (last_reconciled_at IS NULL OR last_reconciled_at<now()-interval '60 seconds') AND created_at>now()-interval '7 days' ORDER BY last_reconciled_at NULLS FIRST,created_at LIMIT 30`,[config.mpMode])).rows;
     for(const checkout of checkouts){try{await reconcileMpCheckout(pool,mercadoPagoClient,config,checkout);}catch(e){console.error('Revisión Mercado Pago:',checkout.id,e.message);}}
   }
+  if(flowClient && config.flowMode!=='disabled') {
+    const checkouts=(await pool.query(`SELECT * FROM flow_checkouts WHERE mode=$1 AND credential_id=$2
+      AND (last_reconciled_at IS NULL OR last_reconciled_at<now()-interval '60 seconds') AND created_at>now()-interval '7 days'
+      ORDER BY last_reconciled_at NULLS FIRST,created_at LIMIT 30`,[config.flowMode,flowCredentialId(config)])).rows;
+    for(const checkout of checkouts){try{await reconcileFlowCheckout(pool,flowClient,config,checkout);}catch{console.error('Revisión Flow pendiente:',checkout.id);}}
+  }
   await releaseExpiredOrders(pool);
   await sendEmailsOnce(pool,config,emailProvider);
 }
-export function startCommerceWorker(pool,config,tx,mercadoPagoClient) {
+export function startCommerceWorker(pool,config,tx,mercadoPagoClient,flowClient) {
   let running=false,stopped=false;
-  const run=async()=>{if(running||stopped)return;running=true;try{await commerceCycle(pool,config,tx,{mercadoPagoClient});}catch(e){console.error('Revisión de pedidos:',e.message);}finally{running=false;}};
+  const run=async()=>{if(running||stopped)return;running=true;try{await commerceCycle(pool,config,tx,{mercadoPagoClient,flowClient});}catch(e){console.error('Revisión de pedidos:',e.message);}finally{running=false;}};
   void run();const timer=setInterval(()=>void run(),60_000);timer.unref();
   return ()=>{stopped=true;clearInterval(timer);};
 }

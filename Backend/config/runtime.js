@@ -21,8 +21,12 @@ export function runtimeConfig(env = process.env) {
   const mpMode=env.MP_MODE || 'disabled';
   if (!['disabled','integration','production'].includes(mpMode)) throw new Error('MP_MODE no válido.');
   if (mpMode==='production' && !production) throw new Error('Mercado Pago producción requiere NODE_ENV=production.');
+  const flowMode=env.FLOW_MODE || 'disabled';
+  if (!['disabled','integration','production'].includes(flowMode)) throw new Error('FLOW_MODE no válido.');
+  if (flowMode==='production' && !production) throw new Error('Flow producción requiere NODE_ENV=production.');
   if (env.ORDER_TOKEN_SECRET && env.ORDER_TOKEN_SECRET.length < 32) throw new Error('ORDER_TOKEN_SECRET requiere al menos 32 caracteres.');
-  return { production, origin, apiOrigin, mode, mpMode, mpAccessToken:env.MP_ACCESS_TOKEN||'', mpWebhookSecret:env.MP_WEBHOOK_SECRET||'', mpCollectorId:env.MP_COLLECTOR_ID||'', mpPublicOrigin:(env.MP_PUBLIC_BASE_URL||apiOrigin).replace(/\/+$/, ''), enabled: env.CHECKOUT_ENABLED === 'true',
+  return { production, origin, apiOrigin, mode, mpMode, mpAccessToken:env.MP_ACCESS_TOKEN||'', mpWebhookSecret:env.MP_WEBHOOK_SECRET||'', mpCollectorId:env.MP_COLLECTOR_ID||'', mpPublicOrigin:(env.MP_PUBLIC_BASE_URL||apiOrigin).replace(/\/+$/, ''),
+    flowMode,flowApiKey:(env.FLOW_API_KEY||'').trim(),flowSecretKey:(env.FLOW_SECRET_KEY||'').trim(),flowPublicOrigin:(env.FLOW_PUBLIC_BASE_URL||apiOrigin).replace(/\/+$/,''),enabled: env.CHECKOUT_ENABLED === 'true',
     allowIntegration: env.ALLOW_INTEGRATION_CHECKOUT === 'true', emailMode: env.EMAIL_MODE || 'disabled', secret: env.ORDER_TOKEN_SECRET || env.SESSION_SECRET };
 }
 

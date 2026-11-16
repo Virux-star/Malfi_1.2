@@ -1,4 +1,5 @@
 import { createMercadoPagoClient } from './services/mercadoPagoClient.js';
+import { createFlowClient } from './services/flowClient.js';
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { createPool } from "./config/database.js";
@@ -10,8 +11,9 @@ pool.on("error", error => console.error("Conexión PostgreSQL:", error.message))
 await pool.query("SELECT 1 FROM schema_migrations LIMIT 1");
 const tx = createWebpayClient(config);
 const mpClient=createMercadoPagoClient(config);
-const app = createApp({ pool, config, webpayClient: tx,mercadoPagoClient:mpClient });
-const stopWorker = startCommerceWorker(pool, config, tx,mpClient);
+const flowClient=createFlowClient(config);
+const app = createApp({ pool, config, webpayClient: tx,mercadoPagoClient:mpClient,flowClient });
+const stopWorker = startCommerceWorker(pool, config, tx,mpClient,flowClient);
 const server = app.listen(Number(process.env.PORT || 3000), "0.0.0.0", () => console.log("MALFI disponible en el puerto", server.address().port));
 let closing = false;
 for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => {

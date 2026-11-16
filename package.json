@@ -16,6 +16,7 @@
     "check:production": "node --env-file-if-exists=Backend/.env Backend/scripts/checkProduction.js",
     "test": "npm --prefix Backend test",
     "admin:reset": "npm --prefix Backend run admin:reset",
-    "mp:check": "node --env-file-if-exists=Backend/.env Backend/scripts/checkMercadoPago.js"
+    "mp:check": "node --env-file-if-exists=Backend/.env Backend/scripts/checkMercadoPago.js",
+    "flow:check": "node --env-file-if-exists=Backend/.env Backend/scripts/checkFlow.js"
   }
 }
