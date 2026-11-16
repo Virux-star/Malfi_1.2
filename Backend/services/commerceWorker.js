@@ -6,19 +6,20 @@ const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const clp=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(n));
 export function orderEmail(kind,order,items,config) {
   const business=order.business_snapshot||{};
+  const pickup=order.delivery_method==='pickup';
   const admin=kind==='admin_new_order';
   const test=order.payment_mode!=='production';
   const url=`${config.origin}/pedido/${order.id}#token=${orderToken(order.checkout_key,config)}`;
   const title=admin?'Nuevo pedido pagado':'Tu compra está confirmada';
   const text=[`MALFI${test?' · PRUEBA SIN COBRO REAL':''}`,title,`Pedido #${order.id}`,`Cliente: ${order.customer_name}`,
     ...items.map(i=>`${i.product_name} · ${i.quantity} × ${clp(i.unit_price_clp)} = ${clp(i.line_total_clp)}`),
-    `Subtotal: ${clp(order.subtotal_clp)}`,`Despacho ${order.carrier}: ${clp(order.shipping_clp)}`,`Total pagado: ${clp(order.total_clp)} CLP`,
-    `Entrega: ${order.shipping_address}, ${order.shipping_comuna}, ${order.shipping_region}`,
-    `Plazo total estimado: ${order.delivery_days_min} a ${order.delivery_days_max} días hábiles desde el pago.`,
+    `Subtotal: ${clp(order.subtotal_clp)}`,pickup?'Retiro en tienda: Sin costo':`Despacho ${order.carrier}: ${clp(order.shipping_clp)}`,`Total pagado: ${clp(order.total_clp)} CLP`,
+    `${pickup?'Retiro en tienda':'Entrega'}: ${order.shipping_address}, ${order.shipping_comuna}, ${order.shipping_region}`,
+    pickup?`Preparación estimada: hasta ${order.delivery_days_max} día(s) hábil(es) desde el pago. Revisa el estado en tu pedido y coordina el retiro con MALFI antes de ir.`:`Plazo total estimado: ${order.delivery_days_min} a ${order.delivery_days_max} días hábiles desde el pago.`,
     `Consulta y seguimiento: ${url}`,'',`Proveedor: ${business.legalName} · RUT ${business.rut}`,
     `Domicilio legal: ${business.legalAddress}`,`Contacto: ${business.email} · ${business.phone}`,
     `Condiciones aceptadas: ${order.terms_version}`,
-    'Los precios se expresan en pesos chilenos e incluyen los impuestos aplicables. El despacho se realiza desde Las Condes. Paket atiende los destinos con cobertura de Santiago confirmada; Blue Express atiende los demás destinos habilitados. El costo y plazo informados forman parte del pedido.',
+    pickup?'Los precios se expresan en pesos chilenos e incluyen los impuestos aplicables. Elegiste retiro en tienda sin costo en la dirección informada en este comprobante. El plazo de preparación informado forma parte del pedido. Coordina el retiro con MALFI cuando el pedido esté listo.':'Los precios se expresan en pesos chilenos e incluyen los impuestos aplicables. El despacho se realiza desde Las Condes. Paket atiende los destinos con cobertura de Santiago confirmada; Blue Express atiende los demás destinos habilitados. El costo y plazo informados forman parte del pedido.',
     'Puedes ejercer el retracto dentro de 10 días desde que recibes el producto, conforme a la normativa aplicable. Si un producto nuevo tiene defectos, puedes elegir reparación, cambio o devolución dentro de los 6 meses desde su recepción, cuando corresponda la garantía legal.',
     business.returnsInstructions,
     'Usamos tus datos para gestionar esta compra, su pago, entrega y atención posterior. Se comunican a los proveedores de pago, despacho y correo necesarios para esos fines. No se utiliza esta compra como consentimiento para publicidad. Puedes dirigir consultas sobre tus datos al correo del negocio.',

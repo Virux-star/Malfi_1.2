@@ -1,4 +1,5 @@
 import { paymentProviders } from '../config/paymentProviders.js';
+import { pickupLocation } from '../config/fulfillment.js';
 export const defaultStore = {
   legalName: '', rut: '', legalAddress: '', representative: '', email: '', phone: '',
   instagram: 'https://www.instagram.com/malfi.candles/', origin: 'Las Condes, Región Metropolitana, Chile',
@@ -23,7 +24,7 @@ export async function readiness(pool, config) {
   }
   if (config.production && options.providers.some(p=>p.mode==='integration') && (!config.allowIntegration || config.emailMode!=='test' || !process.env.RESEND_API_KEY || !process.env.EMAIL_TEST_TO)) issues.push('Para validar en staging configura ALLOW_INTEGRATION_CHECKOUT=true y el correo de prueba.');
   const rates = await pool.query('SELECT COUNT(*)::int AS n FROM shipping_rates_comunas WHERE active=TRUE AND price_clp IS NOT NULL AND verified_at IS NOT NULL');
-  if (!rates.rows[0].n) issues.push('Configura al menos una tarifa real de despacho y su plazo.');
+  if (!pickupLocation.enabled && !rates.rows[0].n) issues.push('Configura al menos una tarifa real de despacho y su plazo.');
   const products = await pool.query('SELECT COUNT(*)::int AS n FROM products WHERE active=TRUE AND stock-reserved_stock > 0');
   if (!products.rows[0].n) issues.push('Publica al menos un producto con stock disponible.');
   return { ready: issues.length === 0, issues, mode: config.mode, store, paymentProviders:options.providers, providerIssues:options.issues };

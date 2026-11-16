@@ -14,6 +14,7 @@ const statusLabels = {
   pending_payment: "Pendiente de pago",
   preparing: "En preparación",
   shipped: "Enviado",
+  ready_for_pickup: "Listo para retiro",
   delivered: "Entregado",
   cancelled: "Cancelado",
 
@@ -56,6 +57,14 @@ function getNextOrderAction(order) {
   // No permitir preparación sin pago confirmado
   if (order.payment_status !== "paid") {
     return null;
+  }
+
+  if (order.delivery_method === "pickup") {
+    return {
+      pending_payment: {status: "preparing", label: "Marcar en preparación"},
+      preparing: {status: "ready_for_pickup", label: "Marcar listo para retiro"},
+      ready_for_pickup: {status: "delivered", label: "Marcar como retirado"}
+    }[order.status] || null;
   }
 
   const actions = {
@@ -169,7 +178,7 @@ function AdminOrders() {
     if (!selectedOrder || updatingStatus) return;
 
     const confirmed = window.confirm(
-      `¿Confirmas cambiar el pedido #${selectedOrder.id} a "${statusLabels[nextStatus]}"?`
+      `¿Confirmas cambiar el pedido #${selectedOrder.id} a "${selectedOrder.delivery_method === "pickup" && nextStatus === "delivered" ? "Retirado" : statusLabels[nextStatus]}"?`
     );
 
     if (!confirmed) return;
@@ -457,7 +466,7 @@ function AdminOrders() {
                 <p>{selectedOrder.customer_email}</p>
                 <p>{selectedOrder.customer_phone}</p>
 
-                <h4>Dirección de despacho</h4>
+                <h4>{selectedOrder.delivery_method === "pickup" ? "Punto de retiro en tienda" : "Dirección de despacho"}</h4>
 
                 <p>{selectedOrder.shipping_address}</p>
                 <p>
@@ -472,7 +481,7 @@ function AdminOrders() {
                 )}
 
                 <p>
-                  <strong>Transportista:</strong>{" "}
+                  <strong>{selectedOrder.delivery_method === "pickup" ? "Modalidad:" : "Transportista:"}</strong>{" "}
                   {selectedOrder.carrier}
                 </p>
 
@@ -507,7 +516,7 @@ function AdminOrders() {
                 </div>
 
                 <div className="orders-admin-total-row">
-                  <span>Despacho</span>
+                  <span>{selectedOrder.delivery_method === "pickup" ? "Retiro en tienda" : "Despacho"}</span>
                   <span>
                     {formatPrice(selectedOrder.shipping_clp)}
                   </span>
@@ -524,7 +533,7 @@ function AdminOrders() {
 
                 <p>
                   Pedido:{" "}
-                  {statusLabels[selectedOrder.status] ||
+                  {selectedOrder.delivery_method === "pickup" && selectedOrder.status === "delivered" ? "Retirado" : statusLabels[selectedOrder.status] ||
                     selectedOrder.status}
                 </p>
 

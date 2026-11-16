@@ -2,6 +2,7 @@ import { providerMode, providerAvailable } from '../config/paymentProviders.js';
 import { startMercadoPago, reconcileMpCheckout } from '../services/mercadoPago.js';
 import { rateLimit } from 'express-rate-limit';
 import { readiness } from '../services/store.js';
+import { pickupLocation } from '../config/fulfillment.js';
 import { digest, orderToken, validId, fail, customerOrder, startPayment, settlePayment, validBank, bankApproved, reconcilePayment } from '../services/payments.js';
 const uuid = v => typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const tokenFrom = req => (req.get('Authorization') || '').replace(/^Bearer /,'');
@@ -13,10 +14,15 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     const key=req.get('Idempotency-Key');
     if (!uuid(key)) throw fail('Recarga la página e intenta nuevamente.',400);
     const c=req.body?.customer || {};
+    const deliveryMethod=req.body?.deliveryMethod ?? 'shipping';
+    if (!['shipping','pickup'].includes(deliveryMethod)) throw fail('Elige una forma de entrega válida.',400);
+    const pickup=deliveryMethod==='pickup';
+    if (pickup&&!pickupLocation.enabled) throw fail('El retiro en tienda no está disponible.',409);
     const customer={};
     for (const [field,max] of Object.entries({fullName:120,email:254,phone:25,region:100,comuna:100,address:250,reference:300})) {
-      const value=typeof c[field]==='string'?c[field].trim():'';
-      if ((field!=='reference'&&!value)||value.length>max) throw fail('Completa correctamente tus datos de despacho.',400);
+      const value=pickup&&['region','comuna','address','reference'].includes(field)
+        ? (pickupLocation[field]||'') : typeof c[field]==='string'?c[field].trim():'';
+      if ((field!=='reference'&&!value)||value.length>max) throw fail('Completa correctamente tus datos de contacto y entrega.',400);
       customer[field]=value;
     }
     customer.email=customer.email.toLowerCase();
@@ -27,7 +33,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     if (req.body.acceptTerms!==true) throw fail('Debes aceptar los términos y la política de privacidad.',400);
     const provider=req.body.paymentProvider||'webpay';
     if (!['webpay','mercadopago'].includes(provider)) throw fail('Elige un medio de pago válido.',400);
-    const fingerprint=digest(JSON.stringify({customer,items,termsVersion:req.body.termsVersion,...(provider==='mercadopago'?{provider}:{})}));
+    const fingerprint=digest(JSON.stringify({customer,items,termsVersion:req.body.termsVersion,...(provider==='mercadopago'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
     const token=orderToken(key,config);
     const client=await pool.connect();
     let order;
@@ -51,15 +57,16 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
           if (!p||p.stock-p.reserved_stock<i.quantity) throw fail(`Uno de los productos no tiene stock suficiente. Revisa tu carrito.`);
           subtotal+=p.price*i.quantity;
         }
-        const rate=(await client.query(`SELECT * FROM shipping_rates_comunas WHERE lower(trim(region))=lower($1) AND lower(trim(comuna))=lower($2) AND active=TRUE AND price_clp IS NOT NULL AND verified_at IS NOT NULL FOR SHARE`,[customer.region,customer.comuna])).rows[0];
+        const rate=pickup?{...pickupLocation,carrier:'Retiro en tienda',price_clp:0,delivery_days_min:0,delivery_days_max:0}
+          :(await client.query(`SELECT * FROM shipping_rates_comunas WHERE lower(trim(region))=lower($1) AND lower(trim(comuna))=lower($2) AND active=TRUE AND price_clp IS NOT NULL AND verified_at IS NOT NULL FOR SHARE`,[customer.region,customer.comuna])).rows[0];
         if (!rate) throw fail('No tenemos despacho configurado para este destino.');
         const total=subtotal+rate.price_clp;
         if (!Number.isSafeInteger(total)||total<1||total>999999999) throw fail('El monto del pedido supera el límite permitido.',400);
         // Explicit review of current server totals prevents an unnoticed price change.
         if (req.body.expectedTotal!==total) throw fail('El precio o despacho cambió. Recarga la página y revisa el total antes de pagar.');
-        order=(await client.query(`INSERT INTO orders(customer_name,customer_email,customer_phone,shipping_region,shipping_comuna,shipping_address,shipping_reference,carrier,subtotal_clp,shipping_clp,total_clp,inventory_reserved,checkout_key,checkout_fingerprint,access_token_hash,payment_mode,expires_at,terms_version,accepted_at,business_snapshot,delivery_days_min,delivery_days_max,payment_provider)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,now()+interval '60 minutes',$16,now(),$17,$18,$19,$20) RETURNING *`,[
-            customer.fullName,customer.email,customer.phone,rate.region,rate.comuna,customer.address,customer.reference||null,rate.carrier,subtotal,rate.price_clp,total,key,fingerprint,digest(token),providerMode(config,provider),state.store.policiesVersion,state.store,rate.delivery_days_min+state.store.preparationDays,rate.delivery_days_max+state.store.preparationDays,provider
+        order=(await client.query(`INSERT INTO orders(customer_name,customer_email,customer_phone,shipping_region,shipping_comuna,shipping_address,shipping_reference,carrier,subtotal_clp,shipping_clp,total_clp,inventory_reserved,checkout_key,checkout_fingerprint,access_token_hash,payment_mode,expires_at,terms_version,accepted_at,business_snapshot,delivery_days_min,delivery_days_max,payment_provider,delivery_method)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,now()+interval '60 minutes',$16,now(),$17,$18,$19,$20,$21) RETURNING *`,[
+            customer.fullName,customer.email,customer.phone,rate.region,rate.comuna,customer.address,customer.reference||null,rate.carrier,subtotal,rate.price_clp,total,key,fingerprint,digest(token),providerMode(config,provider),state.store.policiesVersion,state.store,rate.delivery_days_min+state.store.preparationDays,rate.delivery_days_max+state.store.preparationDays,provider,deliveryMethod
           ])).rows[0];
         for (const i of items) {
           const p=byId.get(i.id);
@@ -70,7 +77,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
       await client.query('COMMIT');
     } catch(e) {await client.query('ROLLBACK');throw e;}
     finally {client.release();}
-    res.status(201).json({orderId:order.id,accessToken:token,total:Number(order.total_clp),carrier:order.carrier,paymentProvider:order.payment_provider});
+    res.status(201).json({orderId:order.id,accessToken:token,total:Number(order.total_clp),carrier:order.carrier,paymentProvider:order.payment_provider,deliveryMethod:order.delivery_method});
   }));
 
   app.get('/api/orders/:id',limited(120),handler(async(req,res)=>{
@@ -95,6 +102,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     const items=(await pool.query('SELECT product_id,product_name,unit_price_clp,quantity,line_total_clp FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
     res.json({id:o.id,status:o.status,paymentStatus:o.payment_status,mode:o.payment_mode,total:Number(o.total_clp),subtotal:Number(o.subtotal_clp),shipping:Number(o.shipping_clp),carrier:o.carrier,comuna:o.shipping_comuna,
       deliveryDaysMin:o.delivery_days_min,deliveryDaysMax:o.delivery_days_max,createdAt:o.created_at,paidAt:o.paid_at,expiresAt:o.expires_at,trackingUrl:o.tracking_url,trackingNumber:o.tracking_number,
+      deliveryMethod:o.delivery_method,pickupAddress:o.delivery_method==='pickup'?`${o.shipping_address}, ${o.shipping_comuna}`:null,
       canPay,paymentProvider:o.payment_provider,requiresPaymentReview,payment:p||null,items});
   }));
   app.post('/api/orders/:id/pay',limited(20),handler(async(req,res)=>{
@@ -164,8 +172,8 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     const trackingUrl=typeof req.body?.trackingUrl==='string'?req.body.trackingUrl.trim():'';
     if(trackingNumber.length>100||trackingUrl.length>500)throw fail('Datos de seguimiento demasiado largos.',400);
     if(trackingUrl){let u;try{u=new URL(trackingUrl);}catch{}if(!u||u.protocol!=='https:'||u.username||u.password)throw fail('El enlace de seguimiento debe comenzar con https://.',400);}
-    const result=await pool.query("UPDATE orders SET tracking_number=$2,tracking_url=$3 WHERE id=$1 AND payment_status='paid' RETURNING id",[req.params.id,trackingNumber||null,trackingUrl||null]);
-    if(!result.rowCount)throw fail('Solo puedes agregar seguimiento a pedidos pagados.');
+    const result=await pool.query("UPDATE orders SET tracking_number=$2,tracking_url=$3 WHERE id=$1 AND payment_status='paid' AND delivery_method='shipping' RETURNING id",[req.params.id,trackingNumber||null,trackingUrl||null]);
+    if(!result.rowCount)throw fail('Solo puedes agregar seguimiento a pedidos pagados con despacho.');
     res.json({message:'Seguimiento guardado. El cliente lo verá al consultar su pedido.'});
   }));
 }

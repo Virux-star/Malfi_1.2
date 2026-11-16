@@ -1,4 +1,5 @@
 import { defaultStore, getStore, readiness } from '../services/store.js';
+import { pickupLocation } from '../config/fulfillment.js';
 const regions=['Arica y Parinacota','Tarapacá','Antofagasta','Atacama','Coquimbo','Valparaíso','Metropolitana de Santiago',"Libertador General Bernardo O'Higgins",'Maule','Ñuble','Biobío','La Araucanía','Los Ríos','Los Lagos','Aysén','Magallanes y de la Antártica Chilena'];
 const wrap=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){next(e);}};
 export function validRut(value) {
@@ -12,7 +13,7 @@ export function registerStoreRoutes(app,pool,requireAdmin,config) {
   app.get('/api/health',wrap(async(req,res)=>{await pool.query('SELECT 1');res.json({status:'ok'});}));
   app.get('/api/store',wrap(async(req,res)=>{
     const r=await readiness(pool,config);
-    res.json({business:r.store,checkoutAvailable:r.ready,paymentMode:config.mode,paymentProviders:r.paymentProviders,regions});
+    res.json({business:r.store,pickup:pickupLocation,checkoutAvailable:r.ready,paymentMode:config.mode,paymentProviders:r.paymentProviders,regions});
   }));
   app.get('/api/shipping/destinations',wrap(async(req,res)=>{
     const rates=await pool.query('SELECT region,comuna,carrier,price_clp,delivery_days_min,delivery_days_max FROM shipping_rates_comunas WHERE active=TRUE AND price_clp IS NOT NULL AND verified_at IS NOT NULL ORDER BY region,comuna');

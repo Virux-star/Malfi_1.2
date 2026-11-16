@@ -781,6 +781,7 @@ app.get("/api/admin/orders", requireAdmin, async (req, res) => {
         o.shipping_region,
         o.shipping_comuna,
         o.carrier,
+        o.delivery_method,
         o.total_clp,
         o.status,
         o.payment_status,
@@ -833,6 +834,7 @@ app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
         shipping_address,
         shipping_reference,
         carrier,
+        delivery_method,
         subtotal_clp,
         shipping_clp,
         total_clp,
@@ -1338,6 +1340,13 @@ app.patch(
         }
       ],
       [
+        "ready_for_pickup",
+        {
+          previousStatus: "preparing",
+          paymentStatus: "paid"
+        }
+      ],
+      [
         "delivered",
         {
           previousStatus: "shipped",
@@ -1365,6 +1374,7 @@ app.patch(
            id,
            status,
            payment_status,
+           delivery_method,
            inventory_reserved
          FROM orders
          WHERE id = $1
@@ -1378,8 +1388,15 @@ app.patch(
 
       const order = orderResult.rows[0];
 
+      if ((requestedStatus === "shipped" && order.delivery_method === "pickup") ||
+          (requestedStatus === "ready_for_pickup" && order.delivery_method !== "pickup")) {
+        throw orderError("Este estado no corresponde a la forma de entrega del pedido.", 409);
+      }
+      const previousStatus = requestedStatus === "delivered" && order.delivery_method === "pickup"
+        ? "ready_for_pickup" : transition.previousStatus;
+
       if (
-        order.status !== transition.previousStatus ||
+        order.status !== previousStatus ||
         order.payment_status !== transition.paymentStatus
       ) {
         throw orderError(
