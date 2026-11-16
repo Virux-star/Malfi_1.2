@@ -1,0 +1,60 @@
+# Temporary Flow Sandbox only. This Blueprint does not reference production resources.
+services:
+  - type: web
+    name: malfi-flow-pruebas
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm run setup && npm run build
+    startCommand: node scripts/start-flow-sandbox.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: FLOW_SANDBOX_SETUP
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: malfi-flow-pruebas-db
+          property: connectionString
+      - key: DB_SSL
+        value: "false"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ORDER_TOKEN_SECRET
+        generateValue: true
+      - key: CHECKOUT_ENABLED
+        value: "true"
+      - key: ALLOW_INTEGRATION_CHECKOUT
+        value: "true"
+      - key: FLOW_MODE
+        value: integration
+      - key: MP_MODE
+        value: disabled
+      - key: WEBPAY_MODE
+        value: disabled
+      - key: WEBPAY_TEST_MODE
+        value: "false"
+      - key: MP_TEST_MODE
+        value: "false"
+      - key: EMAIL_MODE
+        value: test
+      - key: FLOW_API_KEY
+        sync: false
+      - key: FLOW_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_TEST_TO
+        sync: false
+      - key: SANDBOX_ADMIN_PASSWORD
+        sync: false
+databases:
+  - name: malfi-flow-pruebas-db
+    databaseName: malfi_flow_pruebas
+    user: malfi_qa
+    plan: free
+    region: virginia
+    ipAllowList: []

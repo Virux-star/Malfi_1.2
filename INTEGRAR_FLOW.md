@@ -17,6 +17,31 @@ Guarda las claves únicamente en el servidor: `Backend/.env` para desarrollo o *
 
 El origen HTTPS no lleva ruta `/api` ni barra final. El código elige automáticamente el API de Sandbox o producción según el modo; no se configura un host arbitrario.
 
+## Si solo tienes malfi-tienda: crear pruebas con un Blueprint
+
+Se incluye `render.flow-sandbox.yaml` para crear **malfi-flow-pruebas** y su propia base **malfi-flow-pruebas-db**, ambos con plan **Free**. Revisa que Render muestre esos nombres, los planes Free y el costo antes de confirmar. La base gratuita es temporal y vence a los 30 días; el servicio puede dormirse tras 15 minutos sin uso. Consulta las [limitaciones vigentes de Render Free](https://render.com/docs/free).
+
+1. En Render abre **New → Blueprint** y conecta `Virux-star/Malfi_1.2`.
+2. Selecciona la rama **main** y el nombre **malfi-flow-pruebas**.
+3. En **Blueprint Path** escribe exactamente `render.flow-sandbox.yaml`.
+4. Completa los cinco valores privados que solicita:
+
+| Variable | Valor |
+| --- | --- |
+| `FLOW_API_KEY` | API Key de Sandbox |
+| `FLOW_SECRET_KEY` | Secret Key de Sandbox |
+| `RESEND_API_KEY` | Tu clave de Resend |
+| `EMAIL_TEST_TO` | Tu correo autorizado para recibir las pruebas de Resend; también será el usuario del panel |
+| `SANDBOX_ADMIN_PASSWORD` | Una contraseña nueva para el panel de pruebas, de al menos 12 caracteres y hasta 72 bytes |
+
+Al arrancar se verifican las credenciales de Flow con una consulta de lectura. Luego se preparan automáticamente el administrador, dos productos ficticios y un despacho Paket de $3.000 a Las Condes. No hace falta Shell en el plan Free. El proceso rechaza una base de producción y no sobrescribe stock, precios ni contraseñas ya existentes en las pruebas.
+
+Render asignará la URL HTTPS del servicio de pruebas. Los orígenes y callbacks usan automáticamente esa URL; no configures `malfi.cl` en este servicio. Entra a `/admin/login` de la URL nueva con `EMAIL_TEST_TO` y la contraseña elegida. El usuario y la contraseña se crean únicamente en el primer arranque; editar la variable después no cambia una cuenta existente.
+
+Agrega una unidad de cada producto ficticio para probar $50.000 con envío gratis; una sola vela permite probar un despacho pagado. También está disponible el retiro sin costo. Usa solo medios de pago de Sandbox.
+
+La aplicación real continúa usando `render.yaml`. Mantén separados ambos Blueprints y sus bases.
+
 ## Prueba separada de la tienda real
 
 Usa una instalación separada, con su propia base de datos y datos de prueba. El sitio real conserva Mercado Pago productivo, `WEBPAY_MODE=disabled`, `ALLOW_INTEGRATION_CHECKOUT=false` y `CHECKOUT_ENABLED=true`.
