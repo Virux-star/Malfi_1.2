@@ -680,7 +680,7 @@ app.post("/api/checkout/quote", async (req, res) => {
       subtotal,
       shipping: null,
       freeShippingEligible: qualifiesForFreeShipping(subtotal),
-      freeShippingAboveClp: shippingPolicy.freeAboveClp,
+      freeShippingFromClp: shippingPolicy.freeFromClp,
       currency: "CLP"
     });
 

@@ -1,4 +1,4 @@
-export const shippingPolicy = Object.freeze({ freeAboveClp: 50_000 });
+export const shippingPolicy = Object.freeze({ freeFromClp: 50_000 });
 
 export const pickupLocation = Object.freeze({
   enabled: true,

@@ -44,7 +44,7 @@ function HomePage() {
         <Hero />
 
         <ProductCatalog />
-        <section className="store-details" aria-label="Comprar en MALFI"><div><h3>Hecho a mano</h3><p>Cera de soja, aromas y piezas de concreto que acompañan tus espacios.</p></div><div><h3>Despacho</h3><p>Envíos con Paket en Santiago y Blue Express a otros destinos habilitados. También contamos con retiro en tienda.</p>{store?.shippingPolicy&&<p>Despacho gratis por compras superiores a {clp(store.shippingPolicy.freeAboveClp)} en productos.</p>}<a className="text-link" href="/despachos">Despachos y retiro en tienda</a></div><div><h3>Compra con tranquilidad</h3><p>Conoce las condiciones de compra, el retracto y la garantía legal antes de elegir.</p><a className="text-link" href="/terminos">Cambios y devoluciones</a></div></section>
+        <section className="store-details" aria-label="Comprar en MALFI"><div><h3>Hecho a mano</h3><p>Cera de soja, aromas y piezas de concreto que acompañan tus espacios.</p></div><div><h3>Despacho</h3><p>Envíos con Paket en Santiago y Blue Express a otros destinos habilitados. También contamos con retiro en tienda.</p>{store?.shippingPolicy&&<p>Despacho gratis desde {clp(store.shippingPolicy.freeFromClp)} en productos.</p>}<a className="text-link" href="/despachos">Despachos y retiro en tienda</a></div><div><h3>Compra con tranquilidad</h3><p>Conoce las condiciones de compra, el retracto y la garantía legal antes de elegir.</p><a className="text-link" href="/terminos">Cambios y devoluciones</a></div></section>
 
         <section
           id="nosotros"

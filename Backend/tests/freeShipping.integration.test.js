@@ -7,7 +7,7 @@ import { migrate } from '../scripts/migrate.js';
 import { sendEmailsOnce } from '../services/commerceWorker.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
-test('despacho gratis sobre $50.000: precios, cobertura, Mercado Pago y correos', { skip: !databaseUrl }, async t => {
+test('despacho gratis desde $50.000: precios, cobertura, Mercado Pago y correos', { skip: !databaseUrl }, async t => {
   assert.match(new URL(databaseUrl).pathname, /(?:test|qa)/i);
   const pool = new pg.Pool({ connectionString: databaseUrl });
   let server, paymentId = 700000;
@@ -81,16 +81,16 @@ test('despacho gratis sobre $50.000: precios, cobertura, Mercado Pago y correos'
       return preferences.get(checkout.preference_id);
     }
     await t.test('publica la regla y la cotización usa los precios reales del catálogo', async () => {
-      assert.deepEqual((await request('/api/store')).data.shippingPolicy, { freeAboveClp: 50000 });
-      for (const [id, amount, eligible] of [[1, 49999, false], [2, 50000, false], [3, 50001, true]]) {
+      assert.deepEqual((await request('/api/store')).data.shippingPolicy, { freeFromClp: 50000 });
+      for (const [id, amount, eligible] of [[1, 49999, false], [2, 50000, true], [3, 50001, true]]) {
         const r = await quote([{ id, quantity: 1, price: 999999 }]);
         assert.equal(r.status, 200); assert.equal(r.data.subtotal, amount);
-        assert.equal(r.data.freeShippingEligible, eligible); assert.equal(r.data.freeShippingAboveClp, 50000);
+        assert.equal(r.data.freeShippingEligible, eligible); assert.equal(r.data.freeShippingFromClp, 50000);
       }
     });
-    await t.test('aplica el límite estricto a ambos transportistas y guarda el costo definitivo', async () => {
+    await t.test('aplica el umbral inclusivo a ambos transportistas y guarda el costo definitivo', async () => {
       for (const place of destinations) for (const [id, subtotal] of [[1, 49999], [2, 50000], [3, 50001]]) {
-        const fee = subtotal > 50000 ? 0 : place.fee;
+        const fee = subtotal >= 50000 ? 0 : place.fee;
         const order = await create(payload(id, place, subtotal + fee)); orders.push(order);
         const saved = (await read(order)).data;
         assert.equal(saved.subtotal, subtotal); assert.equal(saved.shipping, fee);
@@ -110,13 +110,13 @@ test('despacho gratis sobre $50.000: precios, cobertura, Mercado Pago y correos'
     await t.test('el beneficio considera la suma de productos y se recalcula al cambiar el carrito', async () => {
       const exact = [{ id: 4, quantity: 1 }, { id: 5, quantity: 1 }];
       const above = [...exact, { id: 6, quantity: 1 }];
-      assert.equal((await quote(exact)).data.freeShippingEligible, false);
+      assert.equal((await quote(exact)).data.freeShippingEligible, true);
       assert.equal((await quote(above)).data.freeShippingEligible, true);
-      const charged = await create({ ...payload(4, destinations[0], 53000), items: exact });
+      const atThreshold = await create({ ...payload(4, destinations[0], 50000), items: exact });
       const free = await create({ ...payload(4, destinations[1], 50001), items: above });
-      assert.equal((await read(charged)).data.shipping, 3000);
+      assert.equal((await read(atThreshold)).data.shipping, 0);
       assert.equal((await read(free)).data.shipping, 0);
-      assert.equal((await quote(exact)).data.freeShippingEligible, false);
+      assert.equal((await quote([{ id: 5, quantity: 1 }])).data.freeShippingEligible, false);
     });
     await t.test('un pedido guardado conserva su total aunque cambien precios y tarifas', async () => {
       const order = orders[5];
@@ -128,13 +128,13 @@ test('despacho gratis sobre $50.000: precios, cobertura, Mercado Pago y correos'
       assert.equal((await request('/api/orders', { body: order.body, key: randomUUID() })).status, 409);
     });
     await t.test('Mercado Pago cobra solo los productos del pedido gratis y los correos conservan ese total', async () => {
-      for (const order of [orders[2], orders[5]]) {
+      for (const order of [orders[1], orders[4]]) {
         const pref = await pay(order);
         assert.ok(pref.items.every(i => i.id !== 'shipping'));
-        assert.equal(pref.items.reduce((n, i) => n + i.unit_price * i.quantity, 0), 50001);
+        assert.equal(pref.items.reduce((n, i) => n + i.unit_price * i.quantity, 0), 50000);
         const id = String(++paymentId), merchantId = String(paymentId + 1000000), date = new Date().toISOString();
         payments.set(id, { id: Number(id), external_reference: pref.external_reference, collector_id: 123456,
-          currency_id: 'CLP', live_mode: false, transaction_amount: 50001, transaction_amount_refunded: 0,
+          currency_id: 'CLP', live_mode: false, transaction_amount: 50000, transaction_amount_refunded: 0,
           status: 'approved', status_detail: 'accredited', captured: true, payment_method_id: 'visa',
           payment_type_id: 'credit_card', date_approved: date, date_last_updated: date,
           order: { id: merchantId, type: 'mercadopago' }, metadata: pref.metadata });
@@ -148,10 +148,10 @@ test('despacho gratis sobre $50.000: precios, cobertura, Mercado Pago y correos'
         });
         assert.equal((await event()).status, 200); assert.equal((await event()).status, 200);
         const saved = (await read(order)).data;
-        assert.equal(saved.paymentStatus, 'paid'); assert.equal(saved.shipping, 0); assert.equal(saved.total, 50001);
+        assert.equal(saved.paymentStatus, 'paid'); assert.equal(saved.shipping, 0); assert.equal(saved.total, 50000);
         assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM order_email_outbox WHERE order_id=$1', [order.orderId])).rows[0].n, 2);
       }
-      const charged = await pay(orders[1]);
+      const charged = await pay(orders[0]);
       assert.equal(charged.items.find(i => i.id === 'shipping').unit_price, 3000);
       process.env.EMAIL_TEST_TO = 'qa@example.test';
       const sent = [];
@@ -161,7 +161,7 @@ test('despacho gratis sobre $50.000: precios, cobertura, Mercado Pago y correos'
       assert.equal(sent.length, 4);
       for (const email of sent) {
         assert.match(email.text, /Despacho \((Paket|Blue Express)\): Gratis/);
-        assert.ok(email.html.includes('Gratis')); assert.ok(email.text.includes('$50.001'));
+        assert.ok(email.html.includes('Gratis')); assert.ok(email.text.includes('$50.000'));
         if (email.attachments) assert.match(Buffer.from(email.attachments[0].content, 'base64').toString('utf8'), /Despacho (Paket|Blue Express): Gratis/);
       }
     });

@@ -30,7 +30,7 @@ export default function Checkout() {
   const deliveryAvailable=pickup||!!shipping;
   const shippingCost=pickup?0:shipping?(quote?.freeShippingEligible?0:shipping.price_clp):null;
   const total=quote&&deliveryAvailable?quote.subtotal+shippingCost:null;
-  const freeAbove=quote?.freeShippingAboveClp??store?.shippingPolicy?.freeAboveClp;
+  const freeFrom=quote?.freeShippingFromClp??store?.shippingPolicy?.freeFromClp;
   function change(e){const {name,value}=e.target;setForm(old=>({...old,[name]:value,...(name==='region'?{comuna:''}:{})}));}
   async function submit(e){
     e.preventDefault();if(busy||!deliveryAvailable||!accepted||!store?.checkoutAvailable||!quote||!provider||created)return;
@@ -85,7 +85,7 @@ export default function Checkout() {
       {quote&&<>{quote.items.map(i=><div className="checkout-product" key={i.id}>{i.image_url&&<img src={i.image_url} alt=""/>}<div className="checkout-product-info"><h3>{i.name}</h3><p>Cantidad: {i.quantity}</p><strong>{clp(i.line_total)}</strong></div></div>)}
       <div className="checkout-summary-line"><span>Subtotal</span><strong>{clp(quote.subtotal)}</strong></div>
       <div className="checkout-summary-line"><span>{pickup?'Retiro en tienda':`Despacho${shipping?` · ${shipping.carrier}`:''}`}</span><strong>{pickup?'Sin costo':shipping?shippingCost===0?'Gratis':clp(shippingCost):'Selecciona un destino'}</strong></div>
-      {!pickup&&freeAbove!=null&&<p className="checkout-shipping-note" role="status">{quote.freeShippingEligible?`Tu compra supera ${clp(freeAbove)} y tiene despacho gratis en destinos habilitados.`:`Despacho gratis cuando el valor de los productos supera ${clp(freeAbove)}.`}</p>}
+      {!pickup&&freeFrom!=null&&<p className="checkout-shipping-note" role="status">{quote.freeShippingEligible?'Tu compra tiene despacho gratis en destinos habilitados.':`Despacho gratis desde ${clp(freeFrom)} en productos.`}</p>}
       {pickup&&<p className="checkout-shipping-note">Retiro en {store.pickup.address}, {store.pickup.comuna}. Coordina el retiro cuando el pedido esté listo.</p>}
       {!pickup&&shipping&&<p className="checkout-shipping-note">Entrega estimada: {shipping.delivery_days_min+store.business.preparationDays} a {shipping.delivery_days_max+store.business.preparationDays} días hábiles desde el pago, incluyendo preparación.</p>}
       {total!==null&&<div className="checkout-summary-line checkout-total"><strong>Total a pagar</strong><strong>{clp(total)}</strong></div>}

@@ -11,8 +11,8 @@ function CartPage() {
     subtotal
   } = useCart();
   const { store } = useStore();
-  const freeAbove = store?.shippingPolicy?.freeAboveClp;
-  const freeShipping = freeAbove != null && subtotal > freeAbove;
+  const freeFrom = store?.shippingPolicy?.freeFromClp;
+  const freeShipping = freeFrom != null && subtotal >= freeFrom;
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("es-CL", {
@@ -154,7 +154,7 @@ function CartPage() {
               <p className="cart-summary-note">
                 {freeShipping
                   ? 'Tu compra tiene despacho gratis en destinos habilitados. Confirmaremos los precios y la cobertura al continuar.'
-                  : <>El valor del despacho se calculará al ingresar la dirección de entrega.{freeAbove != null && ` Despacho gratis por compras superiores a ${formatPrice(freeAbove)} en productos.`}</>}
+                  : <>El valor del despacho se calculará al ingresar la dirección de entrega.{freeFrom != null && ` Despacho gratis desde ${formatPrice(freeFrom)} en productos.`}</>}
               </p>
 
               <a href="/checkout" className="cart-checkout">
