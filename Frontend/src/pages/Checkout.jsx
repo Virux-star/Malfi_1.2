@@ -8,7 +8,7 @@ export default function Checkout() {
   const {items}=useCart(),{store,error:storeError}=useStore();
   const [quote,setQuote]=useState(null),[destinations,setDestinations]=useState([]);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[accepted,setAccepted]=useState(false),[created,setCreated]=useState(null);
-  const [selectedProvider,setSelectedProvider]=useState('webpay');
+  const [selectedProvider,setSelectedProvider]=useState('mercadopago');
   const [deliveryMethod,setDeliveryMethod]=useState('shipping');
   const pickup=deliveryMethod==='pickup'&&store?.pickup?.enabled;
   const providers=store?.paymentProviders || [];
@@ -86,7 +86,7 @@ export default function Checkout() {
       {pickup&&<p className="checkout-shipping-note">Retiro en {store.pickup.address}, {store.pickup.comuna}. Coordina el retiro cuando el pedido esté listo.</p>}
       {!pickup&&shipping&&<p className="checkout-shipping-note">Entrega estimada: {shipping.delivery_days_min+store.business.preparationDays} a {shipping.delivery_days_max+store.business.preparationDays} días hábiles desde el pago, incluyendo preparación. Sale desde Las Condes.</p>}
       {total!==null&&<div className="checkout-summary-line checkout-total"><strong>Total a pagar</strong><strong>{clp(total)}</strong></div>}
-      <p className="checkout-form-note">Precios en pesos chilenos, con impuestos incluidos. Completarás el pago directamente en la plataforma que elijas.</p>
+      <p className="checkout-form-note">Precios en pesos chilenos, con impuestos incluidos. Completarás el pago directamente en Mercado Pago.</p>
       </>}
       <button className="checkout-pay-button" type="submit" form="malfi-checkout-form" disabled={busy||!quote||!deliveryAvailable||!accepted||!store?.checkoutAvailable||!provider||!!created}>{busy?'Preparando pago…':created?'Pedido registrado':`Pagar con ${provider?.label||'el medio elegido'}`}</button>
       {created&&<div className="checkout-order-success"><h3>Conservamos tu pedido #{created.orderId}</h3><p>Consulta su resultado antes de repetir la compra.</p><a className="text-link" href={`/pedido/${created.orderId}#token=${created.accessToken}`}>Consultar pedido y continuar</a></div>}

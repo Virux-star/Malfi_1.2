@@ -24,6 +24,8 @@ services:
         generateValue: true
       - key: ALLOW_INTEGRATION_CHECKOUT
         value: "false"
+      - key: WEBPAY_MODE
+        value: disabled
       - key: WEBPAY_TEST_MODE
         value: "false"
       - key: MP_TEST_MODE

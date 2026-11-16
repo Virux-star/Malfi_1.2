@@ -4,6 +4,8 @@ Velas aromáticas de cera de soja y decoración artesanal de concreto.
 
 El proyecto está preparado para instalarlo y publicarlo como una aplicación completa: React + Vite en el frontend, Express y PostgreSQL en el backend. Express sirve también el frontend compilado, con un único dominio para tienda, API y administración.
 
+**Configuración de la tienda MALFI:** el único medio de pago activo es Mercado Pago Checkout Pro. Mantener `WEBPAY_MODE=disabled`; Webpay no forma parte de la operación actual.
+
 **Para agregar Mercado Pago a una instalación existente, empieza por [ACTUALIZAR_MERCADOPAGO.md](ACTUALIZAR_MERCADOPAGO.md).** Para una instalación nueva, sigue [PUBLICAR_MALFI.md](PUBLICAR_MALFI.md).
 
 ## Qué incluye
