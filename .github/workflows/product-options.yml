@@ -1,0 +1,56 @@
+name: Product options and gallery
+
+on:
+  push:
+    branches: [productos-colores-aromas-fotos]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: malfi_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d malfi_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/malfi_qa
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/malfi_qa
+      DB_SSL: "false"
+      SESSION_SECRET: github-actions-qa-session-00000000000000000000
+      FLOW_MODE: disabled
+      MP_MODE: disabled
+      WEBPAY_MODE: disabled
+      EMAIL_MODE: disabled
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            Backend/package-lock.json
+            Frontend/package-lock.json
+      - name: Install locked dependencies
+        run: npm run setup
+      - name: Build storefront
+        run: npm run build
+      - name: Test cart and commerce with isolated PostgreSQL
+        run: npm test

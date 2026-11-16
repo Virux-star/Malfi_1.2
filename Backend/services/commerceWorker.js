@@ -1,3 +1,4 @@
+import { orderItemDescription } from './productOptions.js';
 import { reconcileMpCheckout } from './mercadoPago.js';
 import { reconcileFlowCheckout, flowCredentialId } from './flow.js';
 import { Resend } from 'resend';
@@ -13,7 +14,7 @@ export function orderEmail(kind,order,items,config) {
   const url=`${config.origin}/pedido/${order.id}#token=${orderToken(order.checkout_key,config)}`;
   const title=admin?'Nuevo pedido pagado':'Tu compra está confirmada';
   const text=[`MALFI${test?' · PRUEBA SIN COBRO REAL':''}`,title,`Pedido #${order.id}`,`Cliente: ${order.customer_name}`,
-    ...items.map(i=>`${i.product_name} · ${i.quantity} × ${clp(i.unit_price_clp)} = ${clp(i.line_total_clp)}`),
+    ...items.map(i=>`${orderItemDescription(i)} · ${i.quantity} × ${clp(i.unit_price_clp)} = ${clp(i.line_total_clp)}`),
     `Subtotal: ${clp(order.subtotal_clp)}`,pickup?'Retiro en tienda: Sin costo':`Despacho ${order.carrier}: ${Number(order.shipping_clp)===0?'Gratis':clp(order.shipping_clp)}`,`Total pagado: ${clp(order.total_clp)} CLP`,
     `${pickup?'Retiro en tienda':'Entrega'}: ${order.shipping_address}, ${order.shipping_comuna}, ${order.shipping_region}`,
     pickup?`Preparación estimada: hasta ${order.delivery_days_max} día(s) hábil(es) desde el pago. Revisa el estado en tu pedido y coordina el retiro con MALFI antes de ir.`:`Plazo total estimado: ${order.delivery_days_min} a ${order.delivery_days_max} días hábiles desde el pago.`,

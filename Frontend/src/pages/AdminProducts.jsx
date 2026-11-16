@@ -1,3 +1,5 @@
+import ProductOptionsFields, { optionsFromText } from '../components/ProductOptionsFields';
+import ProductImagesInput, { appendProductPhotos } from '../components/ProductImagesInput';
 import { useRef, useState } from "react";
 import "./AdminProducts.css";
 import AdminProductManager from "../components/AdminProductManager";
@@ -9,12 +11,14 @@ const initialForm = {
   description: "",
   price: "",
   category: "Velas de soja",
-  stock: ""
+  stock: "",
+  colors: "",
+  aromas: ""
 };
 
 function AdminProducts() {
   const [form, setForm] = useState(initialForm);
-  const [image, setImage] = useState(null);
+  const [photos, setPhotos] = useState([]);
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
 
@@ -32,13 +36,8 @@ function AdminProducts() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!image) {
+    if (!photos.length) {
       setMessage("Debes seleccionar una fotografía");
-      return;
-    }
-
-    if (image.size > 5 * 1024 * 1024) {
-      setMessage("La fotografía no puede superar los 5 MB");
       return;
     }
 
@@ -49,7 +48,9 @@ function AdminProducts() {
     formData.append("price", form.price);
     formData.append("category", form.category);
     formData.append("stock", form.stock);
-    formData.append("image", image);
+    formData.append("colors", JSON.stringify(optionsFromText(form.colors)));
+    formData.append("aromas", JSON.stringify(optionsFromText(form.aromas)));
+    appendProductPhotos(formData, photos);
 
     setUploading(true);
     setMessage("");
@@ -75,7 +76,7 @@ function AdminProducts() {
       setMessage("¡Producto publicado correctamente!");
 
       setForm(initialForm);
-      setImage(null);
+      setPhotos([]);
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -173,18 +174,8 @@ function AdminProducts() {
           />
         </label>
 
-        <label>
-          Fotografía del producto
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            ref={fileInputRef}
-            onChange={(e) =>
-              setImage(e.target.files[0] || null)
-            }
-            required
-          />
-        </label>
+        <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={uploading} />
+        <ProductImagesInput photos={photos} onChange={setPhotos} disabled={uploading} />
 
         <button type="submit" disabled={uploading}>
           {uploading ? "Publicando..." : "Publicar producto"}

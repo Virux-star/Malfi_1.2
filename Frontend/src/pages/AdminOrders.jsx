@@ -489,11 +489,12 @@ function AdminOrders() {
 
                 {selectedOrder.items.map((item) => (
                   <div
-                    key={item.product_id}
+                    key={item.id || JSON.stringify([item.product_id,item.selected_color,item.selected_aroma])}
                     className="orders-admin-product"
                   >
                     <div>
                       <strong>{item.product_name}</strong>
+                      {(item.selected_color || item.selected_aroma) && <p>{[item.selected_color && ("Color: " + item.selected_color), item.selected_aroma && ("Aroma: " + item.selected_aroma)].filter(Boolean).join(" · ")}</p>}
                       <p>
                         {item.quantity} ×{" "}
                         {formatPrice(item.unit_price_clp)}
