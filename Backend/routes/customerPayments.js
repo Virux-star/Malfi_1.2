@@ -2,7 +2,7 @@ import { providerMode, providerAvailable } from '../config/paymentProviders.js';
 import { startMercadoPago, reconcileMpCheckout } from '../services/mercadoPago.js';
 import { rateLimit } from 'express-rate-limit';
 import { readiness } from '../services/store.js';
-import { resolveShipping } from '../services/shipping.js';
+import { resolveShipping, shippingPrice } from '../services/shipping.js';
 import { pickupLocation } from '../config/fulfillment.js';
 import { digest, orderToken, validId, fail, customerOrder, startPayment, settlePayment, validBank, bankApproved, reconcilePayment } from '../services/payments.js';
 const uuid = v => typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -61,13 +61,14 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
         const rate=pickup?{...pickupLocation,carrier:'Retiro en tienda',price_clp:0,delivery_days_min:0,delivery_days_max:0}
           :await resolveShipping(client,customer.region,customer.comuna,{lock:true});
         if (!rate) throw fail('No tenemos despacho configurado para este destino.');
-        const total=subtotal+rate.price_clp;
+        const shippingClp=pickup?0:shippingPrice(subtotal,rate.price_clp);
+        const total=subtotal+shippingClp;
         if (!Number.isSafeInteger(total)||total<1||total>999999999) throw fail('El monto del pedido supera el límite permitido.',400);
         // Explicit review of current server totals prevents an unnoticed price change.
         if (req.body.expectedTotal!==total) throw fail('El precio o despacho cambió. Recarga la página y revisa el total antes de pagar.');
         order=(await client.query(`INSERT INTO orders(customer_name,customer_email,customer_phone,shipping_region,shipping_comuna,shipping_address,shipping_reference,carrier,subtotal_clp,shipping_clp,total_clp,inventory_reserved,checkout_key,checkout_fingerprint,access_token_hash,payment_mode,expires_at,terms_version,accepted_at,business_snapshot,delivery_days_min,delivery_days_max,payment_provider,delivery_method)
           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,now()+interval '60 minutes',$16,now(),$17,$18,$19,$20,$21) RETURNING *`,[
-            customer.fullName,customer.email,customer.phone,rate.region,rate.comuna,customer.address,customer.reference||null,rate.carrier,subtotal,rate.price_clp,total,key,fingerprint,digest(token),providerMode(config,provider),state.store.policiesVersion,state.store,rate.delivery_days_min+state.store.preparationDays,rate.delivery_days_max+state.store.preparationDays,provider,deliveryMethod
+            customer.fullName,customer.email,customer.phone,rate.region,rate.comuna,customer.address,customer.reference||null,rate.carrier,subtotal,shippingClp,total,key,fingerprint,digest(token),providerMode(config,provider),state.store.policiesVersion,state.store,rate.delivery_days_min+state.store.preparationDays,rate.delivery_days_max+state.store.preparationDays,provider,deliveryMethod
           ])).rows[0];
         for (const i of items) {
           const p=byId.get(i.id);

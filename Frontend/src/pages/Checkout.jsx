@@ -28,7 +28,9 @@ export default function Checkout() {
   const comunas=destinations.filter(d=>d.region===form.region);
   const shipping=comunas.find(d=>d.comuna===form.comuna);
   const deliveryAvailable=pickup||!!shipping;
-  const total=quote&&deliveryAvailable?quote.subtotal+(pickup?0:shipping.price_clp):null;
+  const shippingCost=pickup?0:shipping?(quote?.freeShippingEligible?0:shipping.price_clp):null;
+  const total=quote&&deliveryAvailable?quote.subtotal+shippingCost:null;
+  const freeAbove=quote?.freeShippingAboveClp??store?.shippingPolicy?.freeAboveClp;
   function change(e){const {name,value}=e.target;setForm(old=>({...old,[name]:value,...(name==='region'?{comuna:''}:{})}));}
   async function submit(e){
     e.preventDefault();if(busy||!deliveryAvailable||!accepted||!store?.checkoutAvailable||!quote||!provider||created)return;
@@ -57,7 +59,7 @@ export default function Checkout() {
       <form id="malfi-checkout-form" className="checkout-form" onSubmit={submit}>
         <fieldset disabled={busy||!!created}>
         <fieldset className="payment-options delivery-options"><legend>Entrega del pedido</legend>
-          <label className={`payment-option ${deliveryMethod==='shipping'?'selected':''}`}><input type="radio" name="deliveryMethod" value="shipping" checked={deliveryMethod==='shipping'} onChange={()=>setDeliveryMethod('shipping')}/><span><strong>Despacho a domicilio</strong><small>Costo y plazo según tu destino</small></span></label>
+          <label className={`payment-option ${deliveryMethod==='shipping'?'selected':''}`}><input type="radio" name="deliveryMethod" value="shipping" checked={deliveryMethod==='shipping'} onChange={()=>setDeliveryMethod('shipping')}/><span><strong>Despacho a domicilio</strong><small>{quote?.freeShippingEligible?'Gratis en destinos habilitados':'Costo y plazo según tu destino'}</small></span></label>
           {store?.pickup?.enabled&&<label className={`payment-option ${pickup?'selected':''}`}><input type="radio" name="deliveryMethod" value="pickup" checked={!!pickup} onChange={()=>setDeliveryMethod('pickup')}/><span><strong>Retiro en tienda · Sin costo</strong><small>{store.pickup.address}, {store.pickup.comuna}</small></span></label>}
         </fieldset>
         {pickup&&<div className="checkout-pickup-info" role="status"><strong>Retira en {store.pickup.address}, {store.pickup.comuna}</strong><p>Preparación estimada: hasta {store.business.preparationDays} día(s) hábil(es) desde el pago. Revisa el estado en tu pedido y coordina el retiro con MALFI antes de ir.</p></div>}
@@ -82,7 +84,8 @@ export default function Checkout() {
       {!quote&&!error&&<p role="status">Verificando precios y disponibilidad…</p>}
       {quote&&<>{quote.items.map(i=><div className="checkout-product" key={i.id}>{i.image_url&&<img src={i.image_url} alt=""/>}<div className="checkout-product-info"><h3>{i.name}</h3><p>Cantidad: {i.quantity}</p><strong>{clp(i.line_total)}</strong></div></div>)}
       <div className="checkout-summary-line"><span>Subtotal</span><strong>{clp(quote.subtotal)}</strong></div>
-      <div className="checkout-summary-line"><span>{pickup?'Retiro en tienda':`Despacho${shipping?` · ${shipping.carrier}`:''}`}</span><strong>{pickup?'Sin costo':shipping?clp(shipping.price_clp):'Selecciona un destino'}</strong></div>
+      <div className="checkout-summary-line"><span>{pickup?'Retiro en tienda':`Despacho${shipping?` · ${shipping.carrier}`:''}`}</span><strong>{pickup?'Sin costo':shipping?shippingCost===0?'Gratis':clp(shippingCost):'Selecciona un destino'}</strong></div>
+      {!pickup&&freeAbove!=null&&<p className="checkout-shipping-note" role="status">{quote.freeShippingEligible?`Tu compra supera ${clp(freeAbove)} y tiene despacho gratis en destinos habilitados.`:`Despacho gratis cuando el valor de los productos supera ${clp(freeAbove)}.`}</p>}
       {pickup&&<p className="checkout-shipping-note">Retiro en {store.pickup.address}, {store.pickup.comuna}. Coordina el retiro cuando el pedido esté listo.</p>}
       {!pickup&&shipping&&<p className="checkout-shipping-note">Entrega estimada: {shipping.delivery_days_min+store.business.preparationDays} a {shipping.delivery_days_max+store.business.preparationDays} días hábiles desde el pago, incluyendo preparación.</p>}
       {total!==null&&<div className="checkout-summary-line checkout-total"><strong>Total a pagar</strong><strong>{clp(total)}</strong></div>}

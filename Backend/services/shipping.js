@@ -1,4 +1,8 @@
 import { communesByRegion, destination, isPaketDestination, normalizePlace, paketPrice } from '../config/shipping.js';
+import { shippingPolicy } from '../config/fulfillment.js';
+
+export const qualifiesForFreeShipping = subtotal => Number.isSafeInteger(subtotal) && subtotal > shippingPolicy.freeAboveClp;
+export const shippingPrice = (subtotal, basePrice) => qualifiesForFreeShipping(subtotal) ? 0 : basePrice;
 
 const usable = rate => rate?.active && rate.verified_at && Number.isInteger(rate.price_clp)
   && rate.price_clp >= 0 && Number.isInteger(rate.delivery_days_min)

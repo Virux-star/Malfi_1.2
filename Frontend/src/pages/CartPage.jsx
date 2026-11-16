@@ -1,5 +1,6 @@
 
 import { useCart } from "../context/CartContext";
+import { useStore } from "../context/StoreContext";
 import "./CartPage.css";
 
 function CartPage() {
@@ -9,6 +10,9 @@ function CartPage() {
     removeFromCart,
     subtotal
   } = useCart();
+  const { store } = useStore();
+  const freeAbove = store?.shippingPolicy?.freeAboveClp;
+  const freeShipping = freeAbove != null && subtotal > freeAbove;
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("es-CL", {
@@ -137,7 +141,7 @@ function CartPage() {
 
               <div className="cart-summary-row">
                 <span>Despacho</span>
-                <span>Por calcular</span>
+                <span>{freeShipping ? 'Gratis' : 'Por calcular'}</span>
               </div>
 
               <div className="cart-summary-divider" />
@@ -148,8 +152,9 @@ function CartPage() {
               </div>
 
               <p className="cart-summary-note">
-                El valor del despacho se calculará al
-                ingresar la dirección de entrega.
+                {freeShipping
+                  ? 'Tu compra tiene despacho gratis en destinos habilitados. Confirmaremos los precios y la cobertura al continuar.'
+                  : <>El valor del despacho se calculará al ingresar la dirección de entrega.{freeAbove != null && ` Despacho gratis por compras superiores a ${formatPrice(freeAbove)} en productos.`}</>}
               </p>
 
               <a href="/checkout" className="cart-checkout">

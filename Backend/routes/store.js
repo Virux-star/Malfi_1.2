@@ -1,5 +1,5 @@
 import { defaultStore, getStore, readiness } from '../services/store.js';
-import { pickupLocation } from '../config/fulfillment.js';
+import { pickupLocation, shippingPolicy } from '../config/fulfillment.js';
 import { regions, destination, isPaketDestination, paketCommunes, paketPrice, santiagoRegion } from '../config/shipping.js';
 import { shippingRates, shippingDestinations } from '../services/shipping.js';
 const wrap=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){next(e);}};
@@ -14,7 +14,7 @@ export function registerStoreRoutes(app,pool,requireAdmin,config) {
   app.get('/api/health',wrap(async(req,res)=>{await pool.query('SELECT 1');res.json({status:'ok'});}));
   app.get('/api/store',wrap(async(req,res)=>{
     const r=await readiness(pool,config);
-    res.json({business:r.store,pickup:pickupLocation,checkoutAvailable:r.ready,paymentMode:config.mode,paymentProviders:r.paymentProviders,regions});
+    res.json({business:r.store,pickup:pickupLocation,shippingPolicy,checkoutAvailable:r.ready,paymentMode:config.mode,paymentProviders:r.paymentProviders,regions});
   }));
   app.get('/api/shipping/destinations',wrap(async(req,res)=>{
     res.json(await shippingDestinations(pool));

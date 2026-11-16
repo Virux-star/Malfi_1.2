@@ -29,6 +29,7 @@ export function compactOrderEmail(kind, order, items, config, confirmationText) 
     : `${order.delivery_days_min} a ${order.delivery_days_max} días hábiles desde el pago`;
   const deliveryLabel = pickup ? 'Retiro en tienda' : 'Entrega';
   const costLabel = pickup ? 'Retiro en tienda' : `Despacho (${order.carrier})`;
+  const costValue = pickup ? 'Sin costo' : Number(order.shipping_clp) === 0 ? 'Gratis' : clp(order.shipping_clp);
   const contact = [business.email, business.phone].filter(Boolean).join(' · ');
   const note = admin ? '' : 'Adjuntamos el comprobante con las condiciones y los datos legales de tu compra.';
   const text = [
@@ -36,7 +37,7 @@ export function compactOrderEmail(kind, order, items, config, confirmationText) 
     admin && `Cliente: ${order.customer_name}`,
     admin && `Contacto del cliente: ${order.customer_email} · ${order.customer_phone}`,
     ...items.map(item => `${item.product_name} · ${item.quantity} × ${clp(item.unit_price_clp)} = ${clp(item.line_total_clp)}`),
-    `Subtotal: ${clp(order.subtotal_clp)}`, `${costLabel}: ${pickup ? 'Sin costo' : clp(order.shipping_clp)}`,
+    `Subtotal: ${clp(order.subtotal_clp)}`, `${costLabel}: ${costValue}`,
     `Total pagado: ${clp(order.total_clp)}`, `${deliveryLabel}: ${delivery}`, pickup ? period : `Plazo estimado: ${period}`,
     `${action}: ${url}`, note, contact && `¿Necesitas ayuda? ${contact}`
   ].filter(Boolean).join('\n');
@@ -57,7 +58,7 @@ export function compactOrderEmail(kind, order, items, config, confirmationText) 
     ${admin ? `<p style="font-size:14px;line-height:1.6;margin:0 0 12px">Cliente: ${escape(order.customer_name)}<br>${escape(order.customer_email)} · ${escape(order.customer_phone)}</p>` : ''}
     <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.5">${rows}
       <tr><td style="padding-top:14px">Subtotal</td><td style="padding-top:14px;text-align:right">${escape(clp(order.subtotal_clp))}</td></tr>
-      <tr><td style="padding:8px 0 14px">${escape(costLabel)}</td><td style="padding:8px 0 14px;text-align:right">${pickup ? 'Sin costo' : escape(clp(order.shipping_clp))}</td></tr>
+      <tr><td style="padding:8px 0 14px">${escape(costLabel)}</td><td style="padding:8px 0 14px;text-align:right">${escape(costValue)}</td></tr>
       <tr><td style="padding-top:14px;border-top:1px solid #e9dfd1"><strong>Total pagado</strong></td><td style="padding-top:14px;border-top:1px solid #e9dfd1;text-align:right;white-space:nowrap"><strong>${escape(clp(order.total_clp))}</strong></td></tr>
     </table>
     <p style="font-size:14px;line-height:1.7;margin:22px 0"><strong>${escape(deliveryLabel)}</strong><br>${escape(delivery)}<br>${escape(period)}.</p>

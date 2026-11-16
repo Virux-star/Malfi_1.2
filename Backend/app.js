@@ -6,7 +6,8 @@ import { v2 as cloudinary } from "cloudinary";
 import { createPool } from "./config/database.js";
 import { runtimeConfig, createWebpayClient } from "./config/runtime.js";
 import { registerStoreRoutes } from "./routes/store.js";
-import { resolveShipping } from "./services/shipping.js";
+import { resolveShipping, qualifiesForFreeShipping } from "./services/shipping.js";
+import { shippingPolicy } from "./config/fulfillment.js";
 import { registerCustomerPayments } from "./routes/customerPayments.js";
 import { registerMercadoPagoCheckout } from "./routes/mercadoPagoCheckout.js";
 import { createMercadoPagoClient } from "./services/mercadoPagoClient.js";
@@ -678,6 +679,8 @@ app.post("/api/checkout/quote", async (req, res) => {
       items: verifiedItems,
       subtotal,
       shipping: null,
+      freeShippingEligible: qualifiesForFreeShipping(subtotal),
+      freeShippingAboveClp: shippingPolicy.freeAboveClp,
       currency: "CLP"
     });
 
