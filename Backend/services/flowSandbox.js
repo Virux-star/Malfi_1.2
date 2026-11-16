@@ -45,7 +45,13 @@ export async function bootstrapFlowSandbox(pool, config, env, flowClient) {
         WHERE NOT EXISTS(SELECT 1 FROM products WHERE name=$1)`,[name,price,price===30000?'Velas de soja':'Decoración de concreto']);
     await db.query(`INSERT INTO shipping_rates_comunas(region,comuna,carrier,price_clp,delivery_days_min,delivery_days_max,santiago_coverage,active,verified_at,rate_scope)
       VALUES('Metropolitana de Santiago','Las Condes','Paket',3000,1,3,TRUE,TRUE,now(),'comuna')
-      ON CONFLICT(lower(trim(region)),lower(trim(comuna))) DO NOTHING`);
+      ON CONFLICT(lower(trim(region)),lower(trim(comuna))) DO UPDATE SET
+        carrier=excluded.carrier,price_clp=excluded.price_clp,
+        delivery_days_min=excluded.delivery_days_min,delivery_days_max=excluded.delivery_days_max,
+        santiago_coverage=TRUE,active=TRUE,verified_at=excluded.verified_at,updated_at=now()
+      WHERE shipping_rates_comunas.verified_at IS NULL AND shipping_rates_comunas.active=FALSE
+        AND shipping_rates_comunas.delivery_days_min IS NULL AND shipping_rates_comunas.delivery_days_max IS NULL
+        AND shipping_rates_comunas.carrier='Paket' AND shipping_rates_comunas.price_clp=3000`);
     await db.query('COMMIT');
   }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
 }
