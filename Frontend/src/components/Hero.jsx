@@ -36,10 +36,6 @@ function Hero() {
   return (
     <section className="hero" id="inicio">
       <div className="hero-content">
-        <span className="hero-label">
-          MALFI · CANDLES & DECOR
-        </span>
-
         <h1>
           Pequeños detalles,
           <br />
@@ -66,7 +62,6 @@ function Hero() {
         ) : (
           <div className="hero-placeholder">
             <span>MALFI</span>
-            <small>CANDLES & DECOR</small>
           </div>
         )}
       </div>

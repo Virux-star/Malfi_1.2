@@ -49,7 +49,7 @@ export default function Checkout() {
   }
   if(!items.length)return <main className="checkout-empty"><h1>Tu carrito está vacío</h1><p>Elige tus favoritos para comenzar.</p><a href="/#tienda">Explorar colección</a></main>;
   return <main className="checkout-page"><div className="checkout-container">
-    <header className="checkout-header"><span>MALFI · CANDLES & DECOR</span><h1>Finalizar compra</h1><p>Elige cómo recibir tu pedido.</p></header>
+    <header className="checkout-header"><h1>Finalizar compra</h1><p>Elige cómo recibir tu pedido.</p></header>
     {(storeError||error)&&<p role="alert" className="checkout-error">{storeError||error} <a href="/carrito">Revisar carrito</a></p>}
     {store&&!store.checkoutAvailable&&<p role="status" className="notice">Estamos preparando la tienda para recibir compras. Puedes conocer la colección y contactarnos en <a href="https://www.instagram.com/malfi.candles/" target="_blank" rel="noreferrer">Instagram</a>.</p>}
     {provider?.mode==='integration'&&<p className="notice">Ambiente de prueba: no se realizan cobros reales.</p>}
@@ -84,7 +84,7 @@ export default function Checkout() {
       <div className="checkout-summary-line"><span>Subtotal</span><strong>{clp(quote.subtotal)}</strong></div>
       <div className="checkout-summary-line"><span>{pickup?'Retiro en tienda':`Despacho${shipping?` · ${shipping.carrier}`:''}`}</span><strong>{pickup?'Sin costo':shipping?clp(shipping.price_clp):'Selecciona un destino'}</strong></div>
       {pickup&&<p className="checkout-shipping-note">Retiro en {store.pickup.address}, {store.pickup.comuna}. Coordina el retiro cuando el pedido esté listo.</p>}
-      {!pickup&&shipping&&<p className="checkout-shipping-note">Entrega estimada: {shipping.delivery_days_min+store.business.preparationDays} a {shipping.delivery_days_max+store.business.preparationDays} días hábiles desde el pago, incluyendo preparación. Sale desde Las Condes.</p>}
+      {!pickup&&shipping&&<p className="checkout-shipping-note">Entrega estimada: {shipping.delivery_days_min+store.business.preparationDays} a {shipping.delivery_days_max+store.business.preparationDays} días hábiles desde el pago, incluyendo preparación.</p>}
       {total!==null&&<div className="checkout-summary-line checkout-total"><strong>Total a pagar</strong><strong>{clp(total)}</strong></div>}
       <p className="checkout-form-note">Precios en pesos chilenos, con impuestos incluidos. Completarás el pago directamente en Mercado Pago.</p>
       </>}

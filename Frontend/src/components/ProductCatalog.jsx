@@ -83,10 +83,6 @@ function ProductCatalog() {
         {/* Encabezado */}
         <div className="catalog-header">
 
-          <span className="catalog-label">
-            MALFI · CANDLES & DECOR
-          </span>
-
           <h2>Nuestra colección</h2>
 
           <p>

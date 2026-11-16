@@ -22,7 +22,6 @@ function CartPage() {
       <div className="cart-container">
 
         <div className="cart-header">
-          <span>MALFI · CANDLES & DECOR</span>
           <h1>Tu carrito</h1>
           <p>Revisa los productos que has seleccionado.</p>
         </div>

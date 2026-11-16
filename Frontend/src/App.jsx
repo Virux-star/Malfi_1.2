@@ -43,7 +43,7 @@ function HomePage() {
         <Hero />
 
         <ProductCatalog />
-        <section className="store-details" aria-label="Comprar en MALFI"><div><h3>Hecho a mano</h3><p>Cera de soja, aromas y piezas de concreto que acompañan tus espacios.</p></div><div><h3>Desde Las Condes</h3><p>Despachos con Paket en la cobertura de Santiago y Blue Express a otros destinos habilitados.</p><a className="text-link" href="/despachos">Conocer los despachos</a></div><div><h3>Compra con tranquilidad</h3><p>Conoce las condiciones de compra, el retracto y la garantía legal antes de elegir.</p><a className="text-link" href="/terminos">Cambios y devoluciones</a></div></section>
+        <section className="store-details" aria-label="Comprar en MALFI"><div><h3>Hecho a mano</h3><p>Cera de soja, aromas y piezas de concreto que acompañan tus espacios.</p></div><div><h3>Despacho</h3><p>Envíos con Paket en Santiago y Blue Express a otros destinos habilitados. También contamos con retiro en tienda.</p><a className="text-link" href="/despachos">Despachos y retiro en tienda</a></div><div><h3>Compra con tranquilidad</h3><p>Conoce las condiciones de compra, el retracto y la garantía legal antes de elegir.</p><a className="text-link" href="/terminos">Cambios y devoluciones</a></div></section>
 
         <section
           id="nosotros"
@@ -77,7 +77,7 @@ function HomePage() {
           >
             @malfi.candles
           </a>
-          {store?.business.email && <p style={{ marginTop: 20 }}><a href={`mailto:${store.business.email}`}>{store.business.email}</a> · {store.business.phone}</p>}
+          {store?.business.email && <p style={{ marginTop: 20 }}><a href={`mailto:${store.business.email}`}>{store.business.email}</a> · <a href={`tel:${store.business.phone.replace(/[^\d+]/g,'')}`}>{store.business.phone}</a></p>}
         </section>
       </main>
       <Footer />
