@@ -57,9 +57,15 @@ test('el cliente Flow usa POST form-urlencoded y firma GET sin reintentar creaci
   await assert.rejects(()=>broken.createPayment({amount:1}),e=>e.flowDiagnostic==='NETWORK'&&!e.message.includes('private key'));
   assert.equal(attempted,1);
   const rejected=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:401,json:async()=>({code:1,message:'private-key'})})});
-  await assert.rejects(()=>rejected.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_401_CODE_1'&&!JSON.stringify(e).includes('private-key'));
+  await assert.rejects(()=>rejected.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_401_CODE_1'&&!e.message.includes('private-key'));
   const unsafe=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:400,json:async()=>({code:'private-key',message:'private-key'})})});
-  await assert.rejects(()=>unsafe.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_400'&&!JSON.stringify(e).includes('private-key'));
+  await assert.rejects(()=>unsafe.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_400'&&!e.message.includes('private-key'));
   const parameter=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:400,json:async()=>({code:1620,message:'timeout invalid: private-key https://secret.example/secret'})})});
-  await assert.rejects(()=>parameter.createPayment({amount:50000}),e=>e.flowDiagnostic==='HTTP_400_CODE_1620_FIELD_TIMEOUT'&&!JSON.stringify(e).includes('private-key')&&!JSON.stringify(e).includes('secret.example'));
+  await assert.rejects(()=>parameter.createPayment({amount:50000}),e=>e.flowDiagnostic==='HTTP_400_CODE_1620_FIELD_TIMEOUT'&&!JSON.stringify(e).includes('secret.example'));
+  const sensitive=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:400,json:async()=>({code:1620,message:'Invalid timeout qa-api-key qa-secret-key qa-token-123456 cliente@example.test https://private.example/path 52e584acae4532e744d67061af36bba7'})})});
+  await assert.rejects(()=>sensitive.getStatus('qa-token-123456'),e=>{
+    const json=JSON.stringify(e);return e.flowSandboxHint.includes('Invalid timeout')&&!['qa-api-key','qa-secret-key','qa-token-123456','cliente@example.test','private.example','52e584acae4532e744d67061af36bba7'].some(v=>json.includes(v));
+  });
+  const production=createFlowClient({...flow,flowMode:'production'},{fetchImpl:async()=>({ok:false,status:400,json:async()=>({code:1620,message:'Internal account detail'})})});
+  await assert.rejects(()=>production.createPayment({amount:1}),e=>e.flowSandboxHint===undefined&&!JSON.stringify(e).includes('Internal account detail'));
 });

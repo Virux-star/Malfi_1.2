@@ -6,6 +6,18 @@ export function signFlowParams(params, secret) {
   return createHmac('sha256', secret).update(text, 'utf8').digest('hex');
 }
 
+function sandboxErrorHint(message, params, config) {
+  if (config.flowMode!=='integration'||typeof message!=='string') return undefined;
+  let text=message;
+  const values=[...Object.values(params),config.flowSecretKey,signFlowParams(params,config.flowSecretKey)]
+    .filter(v=>typeof v==='string'&&v.length>3).sort((a,b)=>b.length-a.length);
+  for(const value of values) for(const variant of [value,encodeURIComponent(value)])
+    text=text.split(variant).join('[omitido]').split(variant.toUpperCase()).join('[omitido]').split(variant.toLowerCase()).join('[omitido]');
+  return text.replace(/https?:\/\/[^\s<>"']+/gi,'[URL omitida]')
+    .replace(/[^\s@]+@[^\s@]+/g,'[correo omitido]').replace(/[A-Za-z0-9_-]{20,}/g,'[dato omitido]')
+    .replace(/[<>\r\n]/g,' ').slice(0,180);
+}
+
 export function createFlowClient(config, { fetchImpl = fetch } = {}) {
   if (!['integration','production'].includes(config.flowMode) || !config.flowApiKey || !config.flowSecretKey) return null;
   const origin = config.flowMode === 'production' ? 'https://www.flow.cl/api' : 'https://sandbox.flow.cl/api';
@@ -28,7 +40,10 @@ export function createFlowClient(config, { fetchImpl = fetch } = {}) {
       const message=typeof data?.message==='string'?data.message:'';
       const fields=['commerceOrder','subject','currency','amount','email','paymentMethod','urlConfirmation','urlReturn','timeout','apiKey','secretKey','signature','merchant','account'];
       const field=fields.find(name=>new RegExp(`\\b${name}\\b`,'i').test(message));
-      throw Object.assign(fail(`No se pudo consultar Flow (HTTP ${status}).`, 502), { flowDiagnostic: `HTTP_${status}${code}${field?'_FIELD_'+field.toUpperCase():''}` });
+      throw Object.assign(fail(`No se pudo consultar Flow (HTTP ${status}).`, 502), {
+        flowDiagnostic: `HTTP_${status}${code}${field?'_FIELD_'+field.toUpperCase():''}`,
+        flowSandboxHint:sandboxErrorHint(message,params,config)
+      });
     }
     return data;
   }

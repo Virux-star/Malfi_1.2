@@ -81,7 +81,8 @@ export async function startFlow(pool, client, config, id) {
     console.error('Inicio Flow pendiente:',a.id,diagnostic);
     await pool.query(`UPDATE flow_checkouts SET state='review',last_error='Creación sin resultado confirmado.',updated_at=now()
       WHERE id=$1 AND state='starting'`, [a.id]);
-    throw fail('No pudimos confirmar el inicio de Flow. Conservamos el pedido para revisarlo; evita repetir la compra.'+(a.mode==='integration'?` Diagnóstico Sandbox: ${diagnostic}.`:''), 502);
+    const hint=a.mode==='integration'&&typeof error?.flowSandboxHint==='string'?error.flowSandboxHint:'';
+    throw fail('No pudimos confirmar el inicio de Flow. Conservamos el pedido para revisarlo; evita repetir la compra.'+(a.mode==='integration'?` Diagnóstico Sandbox: ${diagnostic}.${hint?' '+hint:''}`:''), 502);
   }
 }
 
