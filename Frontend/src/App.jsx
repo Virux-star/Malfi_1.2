@@ -55,10 +55,38 @@ function HomePage() {
         >
           <h2>Sobre MALFI</h2>
 
-          <p style={{ marginTop: 20 }}>
-            Velas aromáticas de cera de soja
-            y decoración artesanal de concreto.
-          </p>
+          <div
+            style={{
+              maxWidth: 780,
+              margin: "28px auto 0",
+              textAlign: "left",
+              display: "grid",
+              gap: 20,
+              lineHeight: 1.8
+            }}
+          >
+            <p>
+              MALFI nació a finales de 2022, a partir de una idea que poco a poco se transformó en un proyecto lleno de creatividad, dedicación y pasión por los detalles.
+            </p>
+            <p>
+              Detrás de MALFI hay una persona que está presente en cada etapa del proceso: desde la creación de cada diseño y la elección de los materiales, hasta la elaboración y terminación de cada pieza.
+            </p>
+            <p>
+              Creamos velas de cera de soja y piezas decorativas en concreto, todas hechas a mano, buscando siempre un equilibrio entre diseño, aroma y funcionalidad.
+            </p>
+            <p>
+              Creemos en la belleza de las cosas simples, en los espacios que transmiten calma y en esos pequeños detalles que hacen que un lugar se sienta especial.
+            </p>
+            <p>
+              Cada creación lleva tiempo, dedicación y una parte de este proyecto. Por eso, ninguna pieza es exactamente igual a otra.
+            </p>
+            <p>
+              <em>MALFI es nuestra forma de transformar ideas en objetos que acompañan momentos y dan vida a los espacios.</em>
+            </p>
+            <p>
+              Gracias por valorar y ser parte de este proyecto hecho a mano en Chile.
+            </p>
+          </div>
         </section>
 
         <section
