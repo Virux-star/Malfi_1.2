@@ -18,11 +18,14 @@ export function createFlowClient(config, { fetchImpl = fetch } = {}) {
         method, headers: { Accept: 'application/json', ...(method === 'POST' ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
         ...(method === 'POST' ? { body: encoded.toString() } : {}), signal: AbortSignal.timeout(12_000), redirect: 'error'
       });
-    } catch { throw fail('Flow no respondió. Conservamos el pedido para verificar el resultado.', 502); }
+    } catch { throw Object.assign(fail('Flow no respondió. Conservamos el pedido para verificar el resultado.', 502), { flowDiagnostic: 'NETWORK' }); }
     const data = await response.json().catch(() => null);
     // Do not expose API responses, URLs, signatures or credentials in error messages.
-    if (!response.ok || !data || typeof data !== 'object' || Array.isArray(data) || data.code !== undefined)
-      throw fail(`No se pudo consultar Flow (HTTP ${response.status}).`, 502);
+    if (!response.ok || !data || typeof data !== 'object' || Array.isArray(data) || data.code !== undefined) {
+      const status=Number.isInteger(response.status)?response.status:0;
+      const code=/^-?\d{1,8}$/.test(String(data?.code))?`_CODE_${data.code}`:'';
+      throw Object.assign(fail(`No se pudo consultar Flow (HTTP ${status}).`, 502), { flowDiagnostic: `HTTP_${status}${code}` });
+    }
     return data;
   }
   return {

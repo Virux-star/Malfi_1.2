@@ -54,8 +54,10 @@ test('el cliente Flow usa POST form-urlencoded y firma GET sin reintentar creaci
   assert.equal(new URL(calls[2].url).pathname,'/api/payment/getPayments');assert.equal(calls[2].options.method,'GET');
   let attempted=0;
   const broken=createFlowClient(flow,{fetchImpl:async()=>{attempted++;throw Error('URL contains a private key');}});
-  await assert.rejects(()=>broken.createPayment({amount:1}),e=>!e.message.includes('private key'));
+  await assert.rejects(()=>broken.createPayment({amount:1}),e=>e.flowDiagnostic==='NETWORK'&&!e.message.includes('private key'));
   assert.equal(attempted,1);
   const rejected=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:401,json:async()=>({code:1,message:'private-key'})})});
-  await assert.rejects(()=>rejected.getStatus('qa-token'),e=>!e.message.includes('private-key'));
+  await assert.rejects(()=>rejected.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_401_CODE_1'&&!JSON.stringify(e).includes('private-key'));
+  const unsafe=createFlowClient(flow,{fetchImpl:async()=>({ok:false,status:400,json:async()=>({code:'private-key',message:'private-key'})})});
+  await assert.rejects(()=>unsafe.getStatus('qa-token'),e=>e.flowDiagnostic==='HTTP_400'&&!JSON.stringify(e).includes('private-key'));
 });

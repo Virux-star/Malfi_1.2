@@ -68,7 +68,7 @@ export async function startFlow(pool, client, config, id) {
       timeout: Math.max(1, Math.floor((new Date(order.expires_at).getTime() - Date.now()) / 1000))
     });
     if (!validFlowToken(result.token) || !flowOrderId(result.flowOrder) || !flowUrlAllowed(result.url,a.mode))
-      throw fail('Respuesta de creación Flow no válida.');
+      throw Object.assign(fail('Respuesta de creación Flow no válida.'), {flowDiagnostic:'CREATE_RESPONSE_INVALID'});
     const url = new URL(result.url); url.searchParams.set('token', result.token);
     const saved = await pool.query(`UPDATE flow_checkouts SET token=$2,flow_order=$3,checkout_url=$4,
       state=CASE WHEN state='starting' OR (state='review' AND last_error='Creación sin resultado confirmado.') THEN 'created' ELSE state END,
@@ -76,10 +76,12 @@ export async function startFlow(pool, client, config, id) {
       [a.id,result.token,String(result.flowOrder),url.toString()]);
     if (!saved.rowCount) throw fail('La respuesta de Flow no coincide con el intento guardado.');
     return { provider: 'flow', mode: a.mode, url: url.toString() };
-  } catch {
+  } catch (error) {
+    const diagnostic=/^(?:NETWORK|CREATE_RESPONSE_INVALID|HTTP_\d{1,3}(?:_CODE_-?\d{1,8})?)$/.test(error?.flowDiagnostic||'')?error.flowDiagnostic:'UNCONFIRMED';
+    console.error('Inicio Flow pendiente:',a.id,diagnostic);
     await pool.query(`UPDATE flow_checkouts SET state='review',last_error='Creación sin resultado confirmado.',updated_at=now()
       WHERE id=$1 AND state='starting'`, [a.id]);
-    throw fail('No pudimos confirmar el inicio de Flow. Conservamos el pedido para revisarlo; evita repetir la compra.', 502);
+    throw fail('No pudimos confirmar el inicio de Flow. Conservamos el pedido para revisarlo; evita repetir la compra.'+(a.mode==='integration'?` Diagnóstico Sandbox: ${diagnostic}.`:''), 502);
   }
 }
 
