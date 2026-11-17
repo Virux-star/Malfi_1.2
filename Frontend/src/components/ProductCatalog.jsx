@@ -113,7 +113,7 @@ function ProductCatalog() {
                   : "filter-btn"
               }
             >
-              {category}
+              {category === "Velas de soja" ? "Velas" : category}
             </button>
 
           ))}
