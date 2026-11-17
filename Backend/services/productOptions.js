@@ -1,3 +1,5 @@
+import { chileToday, validWorkshopDate, formatWorkshopDate } from './workshops.js';
+
 export const MAX_OPTIONS = 20;
 export const MAX_PHOTOS = 6;
 const bad = (message, status = 400) => Object.assign(new Error(message), { status });
@@ -27,7 +29,7 @@ export function optionList(value, field = 'opciones') {
 }
 
 export function lineKey(item) {
-  return JSON.stringify([Number(item.id ?? item.product_id), fold(String(item.color ?? item.selected_color ?? '')), fold(String(item.aroma ?? item.selected_aroma ?? ''))]);
+  return JSON.stringify([Number(item.id ?? item.product_id), fold(String(item.color ?? item.selected_color ?? '')), fold(String(item.aroma ?? item.selected_aroma ?? '')), item.workshopDate ?? item.selected_workshop_date ?? '']);
 }
 
 export function normalizeCartLines(value) {
@@ -35,11 +37,13 @@ export function normalizeCartLines(value) {
   const seen = new Set(), quantities = new Map();
   return value.map(raw => {
     const item = { id: Number(raw?.id), quantity: Number(raw?.quantity),
-      color: raw?.color == null ? '' : label(raw.color), aroma: raw?.aroma == null ? '' : label(raw.aroma) };
+      color: raw?.color == null ? '' : label(raw.color), aroma: raw?.aroma == null ? '' : label(raw.aroma),
+      workshopDate: raw?.workshopDate ?? '' };
+    if (item.workshopDate !== '' && !validWorkshopDate(item.workshopDate)) throw bad('Fecha del taller no válida.');
     if (!Number.isInteger(item.id) || item.id < 1 || item.id > 2147483647 ||
       !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100) throw bad('Productos o cantidades no válidos.');
     const key = lineKey(item);
-    if (seen.has(key)) throw bad('El carrito repite una misma combinación de producto, color y aroma.');
+    if (seen.has(key)) throw bad('El carrito repite una misma selección de producto y opciones.');
     seen.add(key);
     const total = (quantities.get(item.id) || 0) + item.quantity;
     if (total > 100) throw bad('Puedes comprar hasta 100 unidades de un mismo producto.');
@@ -67,7 +71,13 @@ export function selectedOptions(product, item) {
       result[field] = match;
     }
   }
-  return result;
+  const date = item.workshopDate || '';
+  if (product.category === 'Talleres') {
+    if (!validWorkshopDate(date) || date < chileToday() || !(product.workshop_dates || []).includes(date)) {
+      throw bad('Selecciona una fecha disponible para ' + product.name + '. Revisa el taller.', 409);
+    }
+  } else if (date) throw bad('Este producto no ofrece fechas de taller.', 409);
+  return { ...result, ...(date ? { workshopDate: date } : {}) };
 }
 
 export function publicProduct(product, admin = false) {
@@ -75,7 +85,9 @@ export function publicProduct(product, admin = false) {
   const images = gallery.length ? gallery.map(image => image.url) : product.image_url ? [product.image_url] : [];
   const { image_gallery, image_public_id, reserved_stock, ...safe } = product;
   return { ...safe, stock: admin ? product.stock : product.stock - (reserved_stock || 0),
-    colors: product.colors || [], aromas: product.aromas || [], images, image_url: images[0] || null };
+    colors: product.colors || [], aromas: product.aromas || [],
+    workshop_dates: product.category === 'Talleres' ? (product.workshop_dates || []).filter(date => admin || date >= chileToday()) : [],
+    images, image_url: images[0] || null };
 }
 
 export function galleryOrder(value, keptUrls, count) {
@@ -91,6 +103,7 @@ export function galleryOrder(value, keptUrls, count) {
 }
 
 export function orderItemDescription(item) {
-  const options = [item.selected_color && 'Color: ' + item.selected_color, item.selected_aroma && 'Aroma: ' + item.selected_aroma].filter(Boolean);
+  const options = [item.selected_color && 'Color: ' + item.selected_color, item.selected_aroma && 'Aroma: ' + item.selected_aroma,
+    item.selected_workshop_date && 'Fecha: ' + formatWorkshopDate(item.selected_workshop_date)].filter(Boolean);
   return item.product_name + (options.length ? ' (' + options.join(' · ') + ')' : '');
 }

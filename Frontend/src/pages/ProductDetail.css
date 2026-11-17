@@ -238,3 +238,6 @@
 .detail-options p{grid-column:1/-1;margin:0;color:#67574d;font-size:.9rem}
 .add-cart-button:disabled{opacity:.55;cursor:not-allowed}
 .product-gallery-thumbs button:focus-visible,.detail-options select:focus-visible{outline:2px solid #92745f;outline-offset:3px}
+
+.quantity-selector input{width:65px;min-width:0;height:45px;border:0;background:transparent;text-align:center;color:#49382e;font:inherit;padding:0 .25rem}
+.quantity-selector input:focus-visible{outline:2px solid #92745f;outline-offset:-2px}

@@ -1,3 +1,4 @@
+import WorkshopDatesFields from './WorkshopDatesFields';
 import ProductOptionsFields, { optionsFromText } from './ProductOptionsFields';
 import ProductImagesInput, { appendProductPhotos } from './ProductImagesInput';
 
@@ -35,7 +36,8 @@ function AdminProductManager() {
     category: "Velas de soja",
     stock: "",
     colors: "",
-    aromas: ""
+    aromas: "",
+    workshopDates: []
   });
 
   // Obtener todos los productos, incluidos los ocultos
@@ -87,7 +89,8 @@ function AdminProductManager() {
       category: product.category,
       stock: String(product.stock),
       colors: (product.colors || []).join("\n"),
-      aromas: (product.aromas || []).join("\n")
+      aromas: (product.aromas || []).join("\n"),
+      workshopDates: product.workshop_dates || []
     });
 
     setPhotos((product.images || (product.image_url ? [product.image_url] : [])).map(url => ({ url })));
@@ -142,6 +145,7 @@ function AdminProductManager() {
 
     formData.append("colors", JSON.stringify(optionsFromText(form.colors)));
     formData.append("aromas", JSON.stringify(optionsFromText(form.aromas)));
+    formData.append("workshopDates", JSON.stringify(form.category === "Talleres" ? form.workshopDates : []));
     appendProductPhotos(formData, photos);
 
     setSaving(true);
@@ -313,7 +317,7 @@ function AdminProductManager() {
               </label>
 
               <label>
-                Stock
+                {form.category === "Talleres" ? "Cupos totales" : "Stock (unidades)"}
                 <input
                   type="number"
                   name="stock"
@@ -352,7 +356,8 @@ function AdminProductManager() {
                 </select>
               </label>
 
-            <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={saving} />
+            {form.category === "Talleres" && <WorkshopDatesFields dates={form.workshopDates} onChange={handleChange} disabled={saving} />}
+        <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={saving} />
             <ProductImagesInput photos={photos} onChange={setPhotos} disabled={saving} />
 
             <div className="manager-actions">

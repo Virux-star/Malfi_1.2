@@ -9,7 +9,7 @@ if (!target || !['postgres:', 'postgresql:'].includes(target.protocol) ||
   process.exit(1);
 }
 const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1',
-  'Backend/tests/productOptions.test.js', 'Backend/tests/productOptions.integration.test.js', 'Frontend/src/lib/cart.test.js'], {
+  'Backend/tests/productOptions.test.js', 'Backend/tests/workshops.test.js', 'Backend/tests/productOptions.integration.test.js', 'Frontend/src/lib/cart.test.js'], {
   stdio: 'inherit', env: { ...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL, NODE_ENV: 'test', DB_SSL: 'false' }
 });
 if (result.error) { console.error('No se pudieron iniciar las pruebas.'); process.exit(1); }

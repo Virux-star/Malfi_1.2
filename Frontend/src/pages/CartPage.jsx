@@ -1,3 +1,5 @@
+import { formatWorkshopDate } from '../lib/workshops';
+import QuantityInput from '../components/QuantityInput';
 import { productQuantity } from '../lib/cart';
 
 import { useCart } from "../context/CartContext";
@@ -74,6 +76,7 @@ function CartPage() {
                     </a>
 
                     {(item.color || item.aroma) && <p>{[item.color && ("Color: " + item.color), item.aroma && ("Aroma: " + item.aroma)].filter(Boolean).join(" · ")}</p>}
+                    {item.workshopDate && <p>Fecha: {formatWorkshopDate(item.workshopDate)}</p>}
                     <p className="cart-unit-price">
                       {formatPrice(item.price)}
                     </p>
@@ -94,7 +97,9 @@ function CartPage() {
                         −
                       </button>
 
-                      <span>{item.quantity}</span>
+                      <QuantityInput max={Math.max(1, item.stock - productQuantity(items, item.id) + item.quantity)}
+                        aria-label={`Cantidad de ${item.name}${item.workshopDate ? ' para el ' + formatWorkshopDate(item.workshopDate) : ''}`}
+                        value={item.quantity} onChange={amount => updateQuantity(item.key, amount)} />
 
                       <button
                         type="button"

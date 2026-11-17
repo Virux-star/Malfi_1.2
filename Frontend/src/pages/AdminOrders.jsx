@@ -1,3 +1,4 @@
+import { formatWorkshopDate } from '../lib/workshops';
 
 import { useState } from "react";
 import "./AdminOrders.css";
@@ -489,11 +490,12 @@ function AdminOrders() {
 
                 {selectedOrder.items.map((item) => (
                   <div
-                    key={item.id || JSON.stringify([item.product_id,item.selected_color,item.selected_aroma])}
+                    key={item.id || JSON.stringify([item.product_id,item.selected_color,item.selected_aroma,item.selected_workshop_date])}
                     className="orders-admin-product"
                   >
                     <div>
                       <strong>{item.product_name}</strong>
+                      {item.selected_workshop_date && <p>Fecha: {formatWorkshopDate(item.selected_workshop_date)}</p>}
                       {(item.selected_color || item.selected_aroma) && <p>{[item.selected_color && ("Color: " + item.selected_color), item.selected_aroma && ("Aroma: " + item.selected_aroma)].filter(Boolean).join(" · ")}</p>}
                       <p>
                         {item.quantity} ×{" "}

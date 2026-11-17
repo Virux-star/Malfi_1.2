@@ -1,0 +1,9 @@
+.workshop-dates-fields{margin:1rem 0;padding:1rem;border:1px solid #d8c9b9;min-width:0}
+.workshop-dates-fields legend{padding:0 .4rem;font-weight:600}
+.workshop-dates-fields p{font-size:.9rem;line-height:1.6;margin-bottom:1rem}
+.workshop-date-row{display:flex;align-items:end;gap:.75rem;margin-bottom:.75rem}
+.workshop-date-row label{display:grid;gap:.4rem;flex:1;min-width:0}
+.workshop-date-row input{width:100%;min-width:0}
+.workshop-dates-fields button{padding:.65rem .9rem;border:1px solid #bfae9d;background:#faf8f5;color:#49382e;cursor:pointer}
+.workshop-dates-fields button:disabled{opacity:.5;cursor:not-allowed}
+.workshop-dates-fields button:focus-visible{outline:2px solid #92745f;outline-offset:3px}

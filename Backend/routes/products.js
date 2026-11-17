@@ -3,11 +3,12 @@ import { fileTypeFromBuffer } from 'file-type';
 import { optionList, publicProduct, MAX_PHOTOS, normalizeCartLines, quantityByProduct, selectedOptions, galleryOrder } from '../services/productOptions.js';
 import { qualifiesForFreeShipping } from '../services/shipping.js';
 import { shippingPolicy } from '../config/fulfillment.js';
+import { workshopDateList, chileToday } from '../services/workshops.js';
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const validId = id => /^[1-9]\d*$/.test(id) && Number(id) <= 2147483647;
 const categories = ['Velas de soja', 'Decoración de concreto', 'Set de velas', 'Talleres', 'Insumos'];
-const fields = 'id,name,description,price,category,stock,reserved_stock,image_url,image_gallery,colors,aromas,active,created_at';
+const fields = 'id,name,description,price,category,stock,reserved_stock,image_url,image_gallery,colors,aromas,workshop_dates,active,created_at';
 
 function productForm(body) {
   const name = String(body.name ?? '').trim(), description = String(body.description ?? '').trim();
@@ -35,7 +36,7 @@ function retainedPhotos(body, existing, legacyReplacement) {
 }
 
 export function registerProductRoutes(app, pool, requireAdmin, uploadLimiter, imageClient) {
-  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: MAX_PHOTOS, fields: 10, parts: 20 } })
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: MAX_PHOTOS, fields: 11, parts: 20 } })
     .fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: MAX_PHOTOS }]);
   const photos = (req, res, next) => upload(req, res, error => {
     if (!error) return next();
@@ -71,6 +72,10 @@ export function registerProductRoutes(app, pool, requireAdmin, uploadLimiter, im
     }
     const colors = optionList(req.body.colors ?? existing?.colors, 'colores');
     const aromas = optionList(req.body.aromas ?? existing?.aromas, 'aromas');
+    const dates = form.category === 'Talleres' ? workshopDateList(req.body.workshopDates ?? existing?.workshop_dates) : [];
+    if (form.category === 'Talleres' && (!dates.length || (form.stock > 0 && !dates.some(date => date >= chileToday())))) {
+      throw fail('Agrega al menos una fecha disponible para publicar el taller.');
+    }
     if (req.files?.image?.length && req.files?.images?.length) throw fail('Utiliza un solo selector de fotografías.');
     const incoming = req.files?.images || req.files?.image || [];
     const legacy = Boolean(req.files?.image?.length);
@@ -100,10 +105,10 @@ export function registerProductRoutes(app, pool, requireAdmin, uploadLimiter, im
         if (!current || JSON.stringify(current.image_gallery) !== JSON.stringify(existing.image_gallery)) throw fail('El producto cambió. Actualiza la lista antes de guardar.', 409);
         if (form.stock < current.reserved_stock) throw fail('El stock no puede ser menor que las unidades reservadas.', 409);
       }
-      const values = [form.name, form.description, form.price, form.category, form.stock, gallery[0].url, gallery[0].public_id, colors, aromas, JSON.stringify(gallery)];
+      const values = [form.name, form.description, form.price, form.category, form.stock, gallery[0].url, gallery[0].public_id, colors, aromas, JSON.stringify(gallery), dates];
       const query = editing
-        ? 'UPDATE products SET name=$1,description=$2,price=$3,category=$4,stock=$5,image_url=$6,image_public_id=$7,colors=$8,aromas=$9,image_gallery=$10::jsonb WHERE id=$11 RETURNING ' + fields
-        : 'INSERT INTO products(name,description,price,category,stock,image_url,image_public_id,colors,aromas,image_gallery) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb) RETURNING ' + fields;
+        ? 'UPDATE products SET name=$1,description=$2,price=$3,category=$4,stock=$5,image_url=$6,image_public_id=$7,colors=$8,aromas=$9,image_gallery=$10::jsonb,workshop_dates=$11 WHERE id=$12 RETURNING ' + fields
+        : 'INSERT INTO products(name,description,price,category,stock,image_url,image_public_id,colors,aromas,image_gallery,workshop_dates) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) RETURNING ' + fields;
       if (editing) values.push(req.params.id);
       const result = await db.query(query, values);
       committing = true;
