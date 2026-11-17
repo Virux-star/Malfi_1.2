@@ -35,7 +35,8 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     if (req.body.acceptTerms!==true) throw fail('Debes aceptar los términos y la política de privacidad.',400);
     const provider=req.body.paymentProvider||'webpay';
     if (!['webpay','mercadopago','flow'].includes(provider)) throw fail('Elige un medio de pago válido.',400);
-    const fingerprint=digest(JSON.stringify({customer,items:items.map(i=>i.color||i.aroma?i:{id:i.id,quantity:i.quantity}),termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
+    // Preserve fingerprints for existing carts; include the date only when selected.
+    const fingerprint=digest(JSON.stringify({customer,items:items.map(i=>({id:i.id,quantity:i.quantity,...(i.color||i.aroma?{color:i.color,aroma:i.aroma}:{}),...(i.workshopDate?{workshopDate:i.workshopDate}:{})})),termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
     const token=orderToken(key,config);
     const client=await pool.connect();
     let order;
@@ -51,7 +52,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
         if (!providerAvailable(config,provider)) throw fail('El medio de pago elegido no está disponible.',503);
         if (!state.ready) throw fail('Estamos preparando la tienda para recibir compras. Contáctanos si necesitas ayuda.',503);
         if (req.body.termsVersion!==state.store.policiesVersion) throw fail('Las condiciones de compra cambiaron. Recarga la página para revisarlas.');
-        const products=(await client.query('SELECT id,name,price,stock,reserved_stock,colors,aromas FROM products WHERE id=ANY($1::int[]) AND active=TRUE ORDER BY id FOR UPDATE',[[...quantities.keys()]])).rows;
+        const products=(await client.query('SELECT id,name,price,category,stock,reserved_stock,colors,aromas,workshop_dates FROM products WHERE id=ANY($1::int[]) AND active=TRUE ORDER BY id FOR UPDATE',[[...quantities.keys()]])).rows;
         const byId=new Map(products.map(p=>[p.id,p]));
         let subtotal=0;
         for (const i of items) {
@@ -76,7 +77,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
           const p=byId.get(i.id);
           await client.query('UPDATE products SET reserved_stock=reserved_stock+$1 WHERE id=$2',[i.quantity,i.id]);
           const choice=selectedOptions(p,i);
-          await client.query('INSERT INTO order_items(order_id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[order.id,p.id,p.name,p.price,i.quantity,p.price*i.quantity,choice.color||null,choice.aroma||null]);
+          await client.query('INSERT INTO order_items(order_id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma,selected_workshop_date) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[order.id,p.id,p.name,p.price,i.quantity,p.price*i.quantity,choice.color||null,choice.aroma||null,choice.workshopDate||null]);
         }
       }
       await client.query('COMMIT');
@@ -111,7 +112,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
       if(p)p={...p,provider:'webpay'};
       canPay=Boolean(payable&&(!p||p.state==='failed'||(p.state==='created'&&Date.now()-new Date(p.created_at)<4*60_000)));
     }
-    const items=(await pool.query('SELECT id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
+    const items=(await pool.query('SELECT id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma,selected_workshop_date FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
     res.json({id:o.id,status:o.status,paymentStatus:o.payment_status,mode:o.payment_mode,total:Number(o.total_clp),subtotal:Number(o.subtotal_clp),shipping:Number(o.shipping_clp),carrier:o.carrier,comuna:o.shipping_comuna,
       deliveryDaysMin:o.delivery_days_min,deliveryDaysMax:o.delivery_days_max,createdAt:o.created_at,paidAt:o.paid_at,expiresAt:o.expires_at,trackingUrl:o.tracking_url,trackingNumber:o.tracking_number,
       deliveryMethod:o.delivery_method,pickupAddress:o.delivery_method==='pickup'?`${o.shipping_address}, ${o.shipping_comuna}`:null,

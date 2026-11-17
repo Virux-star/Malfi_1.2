@@ -254,3 +254,6 @@ a.cart-checkout:hover {
   background-color: #92745f;
   color: white;
 }
+
+.cart-quantity input{width:60px;height:40px;min-width:0;text-align:center;border:0;background:transparent;color:#49382e;font:inherit;padding:0 .2rem}
+.cart-quantity input:focus-visible{outline:2px solid #92745f;outline-offset:-2px}

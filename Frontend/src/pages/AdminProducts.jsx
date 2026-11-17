@@ -1,3 +1,4 @@
+import WorkshopDatesFields from '../components/WorkshopDatesFields';
 import ProductOptionsFields, { optionsFromText } from '../components/ProductOptionsFields';
 import ProductImagesInput, { appendProductPhotos } from '../components/ProductImagesInput';
 import { useRef, useState } from "react";
@@ -13,7 +14,8 @@ const initialForm = {
   category: "Velas de soja",
   stock: "",
   colors: "",
-  aromas: ""
+  aromas: "",
+    workshopDates: []
 };
 
 function AdminProducts() {
@@ -50,6 +52,7 @@ function AdminProducts() {
     formData.append("stock", form.stock);
     formData.append("colors", JSON.stringify(optionsFromText(form.colors)));
     formData.append("aromas", JSON.stringify(optionsFromText(form.aromas)));
+    formData.append("workshopDates", JSON.stringify(form.category === "Talleres" ? form.workshopDates : []));
     appendProductPhotos(formData, photos);
 
     setUploading(true);
@@ -162,7 +165,7 @@ function AdminProducts() {
         </label>
 
         <label>
-          Stock disponible
+          {form.category === "Talleres" ? "Cupos totales disponibles" : "Stock disponible (unidades)"}
           <input
             type="number"
             name="stock"
@@ -174,6 +177,7 @@ function AdminProducts() {
           />
         </label>
 
+        {form.category === "Talleres" && <WorkshopDatesFields dates={form.workshopDates} onChange={handleChange} disabled={uploading} />}
         <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={uploading} />
         <ProductImagesInput photos={photos} onChange={setPhotos} disabled={uploading} />
 

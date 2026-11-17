@@ -1,3 +1,5 @@
+import { formatWorkshopDate, unitQuantity } from '../lib/workshops';
+import QuantityInput from '../components/QuantityInput';
 import { productQuantity, cartKey } from '../lib/cart';
 import { useEffect, useState } from "react";
 import "./ProductDetail.css";
@@ -13,6 +15,7 @@ function ProductDetail({ productId }) {
   const [quantity, setQuantity] = useState(1);
   const [color, setColor] = useState("");
   const [aroma, setAroma] = useState("");
+  const [workshopDate, setWorkshopDate] = useState("");
   const [photoIndex, setPhotoIndex] = useState(0);
 const [cartMessage, setCartMessage] = useState("");
 
@@ -21,10 +24,10 @@ const { items, addToCart } = useCart();
 function handleAddToCart() {
   if (!product || product.stock <= 0) return;
 
-  if ((product.colors?.length && !color) || (product.aromas?.length && !aroma)) {
+  if ((product.category === "Talleres" && !product.workshop_dates?.includes(workshopDate)) || (product.colors?.length && !color) || (product.aromas?.length && !aroma)) {
     setCartMessage("Selecciona las opciones de tu producto."); return;
   }
-  const key = cartKey({ id: product.id, color, aroma });
+  const key = cartKey({ id: product.id, color, aroma, workshopDate });
   if (items.length >= 30 && !items.some(item => item.key === key)) {
     setCartMessage("El carrito admite hasta 30 selecciones distintas."); return;
   }
@@ -39,9 +42,10 @@ function handleAddToCart() {
     return;
   }
 
-  const amount = Math.min(quantity, availableToAdd);
+  const amount = unitQuantity(quantity, availableToAdd);
 
-  addToCart(product, amount, { color, aroma });
+  addToCart(product, amount, { color, aroma, workshopDate });
+  setQuantity(1);
 
   setCartMessage(
     `${amount} unidad(es) agregadas al carrito.`
@@ -55,7 +59,7 @@ function handleAddToCart() {
       setLoading(true);
       setError("");
       setProduct(null);
-      setColor(""); setAroma(""); setPhotoIndex(0); setQuantity(1); setCartMessage("");
+      setColor(""); setAroma(""); setWorkshopDate(""); setPhotoIndex(0); setQuantity(1); setCartMessage("");
 
       try {
         const response = await fetch(
@@ -92,7 +96,8 @@ function handleAddToCart() {
 
   const photos = product?.images?.length ? product.images : product?.image_url ? [product.image_url] : [];
   const availableToAdd = product ? Math.max(0, Math.min(product.stock, 100) - productQuantity(items, product.id)) : 0;
-  const selectionReady = (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma);
+  const isWorkshop = product?.category === "Talleres";
+  const selectionReady = (!isWorkshop || !!product?.workshop_dates?.includes(workshopDate)) && (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma);
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("es-CL", {
@@ -160,7 +165,7 @@ function handleAddToCart() {
                   : "detail-stock unavailable"
               }>
                 {product.stock > 0
-                  ? `Disponible · ${product.stock} unidades`
+                  ? `Disponible · ${product.stock} ${isWorkshop ? "cupos totales" : "unidades"}`
                   : "Producto agotado"}
               </p>
 
@@ -169,6 +174,13 @@ function handleAddToCart() {
               </p>
 
               <div className="detail-options">
+                {isWorkshop && <label>Fecha del taller
+                  <select value={workshopDate} onChange={event => { setWorkshopDate(event.target.value); setCartMessage(''); }} disabled={!product.workshop_dates?.length}>
+                    <option value="">Selecciona una fecha</option>
+                    {(product.workshop_dates || []).map(date => <option key={date} value={date}>{formatWorkshopDate(date)}</option>)}
+                  </select>
+                </label>}
+                {isWorkshop && !product.workshop_dates?.length && <p role="status">Pronto publicaremos nuevas fechas para este taller.</p>}
                 {product.colors?.length > 0 && <label>Color
                   <select value={color} onChange={event => { setColor(event.target.value); setCartMessage(''); }}>
                     <option value="">Selecciona un color</option>
@@ -188,14 +200,14 @@ function handleAddToCart() {
   <div className="detail-cart-actions">
 
     <label htmlFor="product-quantity">
-      Cantidad
+      {isWorkshop ? "Cantidad de cupos" : "Cantidad (unidades)"}
     </label>
 
     <div className="quantity-selector">
       <button
         type="button"
         onClick={() =>
-          setQuantity((previous) => Math.max(1, previous - 1))
+          setQuantity((previous) => unitQuantity(Number(previous) - 1, availableToAdd))
         }
         disabled={quantity <= 1}
         aria-label="Disminuir cantidad"
@@ -203,13 +215,14 @@ function handleAddToCart() {
         −
       </button>
 
-      <span id="product-quantity">{quantity}</span>
+      <QuantityInput id="product-quantity" max={Math.max(1, availableToAdd)}
+        value={quantity} onChange={setQuantity} disabled={availableToAdd <= 0} />
 
       <button
         type="button"
         onClick={() =>
           setQuantity((previous) =>
-            Math.min(Math.max(1, availableToAdd), previous + 1)
+            unitQuantity(Number(previous) + 1, availableToAdd)
           )
         }
         disabled={quantity >= availableToAdd}

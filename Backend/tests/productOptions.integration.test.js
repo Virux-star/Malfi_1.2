@@ -121,5 +121,58 @@ test('opciones y galería: publicación, validación, reservas y compra con Post
       assert.equal(admin.status,200);assert.deepEqual(admin.data.items.map(item=>item.selected_aroma),['Lavanda','Vainilla']);
       assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM order_email_outbox WHERE order_id=$1',[order.orderId])).rows[0].n,2);
     });
+    await t.test('publica talleres con fechas válidas y exige elegir una vigente antes de reservar', async () => {
+      const dates = [7,14].map(days => new Date(Date.now() + days * 86400000).toISOString().slice(0,10));
+      const values = {name:'Taller QA',category:'Talleres',colors:'[]',aromas:'[]',workshopDates:JSON.stringify(dates)};
+      const noDates = await request('/api/admin/products',{form:form({...values,workshopDates:'[]'},1),auth:true});
+      assert.equal(noDates.status,400);
+      const invalid = await request('/api/admin/products',{form:form({...values,workshopDates:'["2026-02-29"]'},1),auth:true});
+      assert.equal(invalid.status,400);
+      const created = await request('/api/admin/products',{form:form(values,1),auth:true});
+      assert.equal(created.status,201,JSON.stringify(created.data));
+      const workshop = created.data.product;
+      assert.deepEqual(workshop.workshop_dates,dates);
+      const quote = items => request('/api/checkout/quote',{body:{items}});
+      for (const workshopDate of ['', '2001-01-01','2099-01-01']) {
+        const badLine = [{id:workshop.id,quantity:1,workshopDate}];
+        assert.equal((await quote(badLine)).status,409);
+        assert.equal((await request('/api/orders',{body:payload(badLine),key:randomUUID()})).status,409);
+      }
+      const selections = dates.map(workshopDate => ({id:workshop.id,quantity:1,workshopDate}));
+      const reviewed = await quote(selections);
+      assert.equal(reviewed.status,200);assert.equal(reviewed.data.subtotal,50000);
+      assert.deepEqual(reviewed.data.items.map(item=>item.workshopDate),dates);
+      const key = randomUUID();
+      const order = await request('/api/orders',{body:payload(selections),key});
+      assert.equal(order.status,201,JSON.stringify(order.data));
+      assert.equal((await request('/api/orders',{body:payload(selections),key})).data.orderId,order.data.orderId);
+      // Changing only the selected date cannot reuse the same checkout.
+      assert.equal((await request('/api/orders',{body:payload([{...selections[0],quantity:2}]),key})).status,409);
+      await pool.query("UPDATE products SET workshop_dates=ARRAY['2099-12-31'] WHERE id=$1",[workshop.id]);
+      assert.equal((await quote(selections)).status,409);
+      const read = await request('/api/orders/'+order.data.orderId,{token:order.data.accessToken});
+      assert.deepEqual(read.data.items.map(item=>item.selected_workshop_date),dates);
+      const admin = await request('/api/admin/orders/'+order.data.orderId,{auth:true});
+      assert.deepEqual(admin.data.items.map(item=>item.selected_workshop_date),dates);
+      assert.deepEqual((await pool.query('SELECT stock,reserved_stock FROM products WHERE id=$1',[workshop.id])).rows[0],{stock:5,reserved_stock:2});
+      // A later edit must not change the dates accepted in the existing order.
+      const start = await request('/api/orders/'+order.data.orderId+'/pay',{method:'POST',token:order.data.accessToken});
+      assert.equal(start.status,200,JSON.stringify(start.data));
+      assert.equal((await request('/api/payments/webpay/return',{body:{token_ws:start.data.token}})).status,303);
+      assert.equal((await request('/api/payments/webpay/return',{body:{token_ws:start.data.token}})).status,303);
+      assert.deepEqual((await pool.query('SELECT stock,reserved_stock FROM products WHERE id=$1',[workshop.id])).rows[0],{stock:3,reserved_stock:0});
+      assert.deepEqual((await request('/api/orders/'+order.data.orderId,{token:order.data.accessToken})).data.items.map(item=>item.selected_workshop_date),dates);
+    });
+    await t.test('los insumos se cotizan por unidades con precio del servidor y límite de stock', async () => {
+      const created = await request('/api/admin/products',{form:form({name:'Mechas QA',category:'Insumos',price:'500',stock:'12',colors:'[]',aromas:'[]'},1),auth:true});
+      assert.equal(created.status,201,JSON.stringify(created.data));
+      const supply = created.data.product;
+      const quote = await request('/api/checkout/quote',{body:{items:[{id:supply.id,quantity:7,price:1}]}});
+      assert.equal(quote.status,200);assert.equal(quote.data.subtotal,3500);
+      assert.equal(quote.data.items[0].quantity,7);assert.equal(quote.data.items[0].price,500);
+      assert.equal((await request('/api/checkout/quote',{body:{items:[{id:supply.id,quantity:13}]}})).status,409);
+      assert.equal((await request('/api/checkout/quote',{body:{items:[{id:supply.id,quantity:1,workshopDate:'2099-01-01'}]}})).status,409);
+      assert.equal((await request('/api/checkout/quote',{body:{items:[{id:supply.id,quantity:1.5}]}})).status,400);
+    });
   }finally{if(server)await new Promise(resolve=>server.close(resolve));await pool.end();}
 });

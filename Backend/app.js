@@ -479,7 +479,7 @@ app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
     const itemsResult = await pool.query(
       `SELECT
         id, product_id,
-        product_name, selected_color, selected_aroma,
+        product_name, selected_color, selected_aroma, selected_workshop_date,
         unit_price_clp,
         quantity,
         line_total_clp
