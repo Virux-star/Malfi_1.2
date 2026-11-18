@@ -121,6 +121,36 @@ test('opciones y galería: publicación, validación, reservas y compra con Post
       assert.equal(admin.status,200);assert.deepEqual(admin.data.items.map(item=>item.selected_aroma),['Lavanda','Vainilla']);
       assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM order_email_outbox WHERE order_id=$1',[order.orderId])).rows[0].n,2);
     });
+    await t.test('conserva el color de vela arena por línea desde la publicación hasta el pedido', async () => {
+      const created = await request('/api/admin/products', { auth:true, form:form({sandColors:'["Rosa","Celeste","rosa"]'}, 1) });
+      assert.equal(created.status, 201, JSON.stringify(created.data));
+      const candle = created.data.product;
+      const path = '/api/admin/products/' + candle.id;
+      assert.deepEqual((await request('/api/products/' + candle.id)).data.sand_colors, ['Rosa', 'Celeste']);
+      const change = values => request(path, {method:'PUT', auth:true, form:form({keepImages:JSON.stringify(candle.images), ...values})});
+      assert.deepEqual((await change({})).data.product.sand_colors, ['Rosa', 'Celeste']);
+      const line = {id:candle.id, quantity:1, color:'Blanco', aroma:'Lavanda'};
+      const quote = items => request('/api/checkout/quote', {body:{items}});
+      for (const sandColor of ['', 'Verde']) assert.equal((await quote([{...line, sandColor}])).status, 409);
+      const variants = ['rosa', 'Celeste'].map(sandColor => ({...line, sandColor}));
+      const reviewed = await quote(variants);
+      assert.equal(reviewed.status, 200);
+      assert.deepEqual(reviewed.data.items.map(i => i.sandColor).sort(), ['Celeste', 'Rosa']);
+      assert.equal((await quote(variants.map(i => ({...i, quantity:3})))).status, 409);
+      const key = randomUUID();
+      const order = await request('/api/orders', {key, body:payload(variants)});
+      assert.equal(order.status, 201, JSON.stringify(order.data));
+      assert.equal((await request('/api/orders', {key, body:payload([{...line, quantity:2, sandColor:'Celeste'}])})).status, 409);
+      assert.deepEqual((await change({sandColors:'[]'})).data.product.sand_colors, []);
+      assert.equal((await quote(variants)).status, 409);
+      assert.equal((await quote([line])).status, 200);
+      const customerOrder = await request('/api/orders/' + order.data.orderId, {token:order.data.accessToken});
+      const adminOrder = await request('/api/admin/orders/' + order.data.orderId, {auth:true});
+      for (const response of [customerOrder, adminOrder]) {
+        assert.deepEqual(response.data.items.map(i => i.selected_sand_color).sort(), ['Celeste', 'Rosa']);
+        assert.ok(response.data.items.every(i => i.selected_color === 'Blanco' && i.selected_aroma === 'Lavanda'));
+      }
+    });
     await t.test('publica talleres con fechas válidas y exige elegir una vigente antes de reservar', async () => {
       const dates = [7,14].map(days => new Date(Date.now() + days * 86400000).toISOString().slice(0,10));
       const values = {name:'Taller QA',category:'Talleres',colors:'[]',aromas:'[]',workshopDates:JSON.stringify(dates)};

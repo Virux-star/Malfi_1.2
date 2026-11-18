@@ -1,3 +1,4 @@
+import SelectedProductOptions from '../components/SelectedProductOptions';
 import { useCartQuote, orderLines } from '../lib/useCartQuote';
 import { formatWorkshopDate } from '../lib/workshops';
 import { useEffect, useState } from 'react';
@@ -80,7 +81,7 @@ export default function Checkout() {
       </form>
     </section><aside className="checkout-summary"><h2>Tu pedido</h2>
       {!quote&&!error&&<p role="status">Verificando precios y disponibilidad…</p>}
-      {quote&&<>{quote.items.map(i=><div className="checkout-product" key={JSON.stringify([i.id,i.color,i.aroma,i.workshopDate,i.workshopTime])}>{i.image_url&&<img src={i.image_url} alt=""/>}<div className="checkout-product-info"><h3>{i.name}</h3>{(i.color||i.aroma)&&<p>{[i.color&&("Color: "+i.color),i.aroma&&("Aroma: "+i.aroma)].filter(Boolean).join(" · ")}</p>}{i.workshopDate&&<p>Fecha: {formatWorkshopDate(i.workshopDate)}</p>}{i.workshopTime&&<p>Horario: {i.workshopTime}</p>}<p>Cantidad: {i.quantity}</p><strong>{clp(i.line_total)}</strong></div></div>)}
+      {quote&&<>{quote.items.map(i=><div className="checkout-product" key={JSON.stringify([i.id,i.color,i.aroma,i.workshopDate,i.workshopTime,i.sandColor])}>{i.image_url&&<img src={i.image_url} alt=""/>}<div className="checkout-product-info"><h3>{i.name}</h3><SelectedProductOptions item={i} />{i.workshopDate&&<p>Fecha: {formatWorkshopDate(i.workshopDate)}</p>}{i.workshopTime&&<p>Horario: {i.workshopTime}</p>}<p>Cantidad: {i.quantity}</p><strong>{clp(i.line_total)}</strong></div></div>)}
       {quote.discount>0 && <div className="checkout-summary-line"><span>Ahorro{quote.couponCode && ' · Cupón ' + quote.couponCode}</span><strong>{clp(quote.discount)}</strong></div>}
       <div className="checkout-summary-line"><span>Subtotal</span><strong>{clp(quote.subtotal)}</strong></div>
       <div className="checkout-summary-line"><span>{pickup?'Retiro en tienda':`Despacho${shipping?` · ${shipping.carrier}`:''}`}</span><strong>{pickup?'Sin costo':shipping?shippingCost===0?'Gratis':clp(shippingCost):'Selecciona un destino'}</strong></div>

@@ -50,7 +50,7 @@ test('la API pública conserva la imagen principal y nunca devuelve identificado
 });
 
 test('los correos del comprador y administración muestran las opciones guardadas y escapan HTML', () => {
-  const item={product_name:'Vela',selected_color:'<img src=x>',selected_aroma:'Vainilla',quantity:1,unit_price_clp:25000,line_total_clp:25000};
+  const item={product_name:'Vela',selected_color:'<img src=x>',selected_aroma:'Vainilla',selected_sand_color:'Rosa',quantity:1,unit_price_clp:25000,line_total_clp:25000};
   const order={id:1,customer_name:'QA',customer_email:'qa@example.test',customer_phone:'+56900000000',checkout_key:'qa-key',
     payment_mode:'integration',subtotal_clp:25000,shipping_clp:3000,total_clp:28000,carrier:'Paket',delivery_days_min:1,delivery_days_max:3,
     shipping_address:'Dirección QA',shipping_comuna:'Las Condes',shipping_region:'Metropolitana de Santiago',
@@ -62,6 +62,8 @@ test('los correos del comprador y administración muestran las opciones guardada
     const email=compactOrderEmail(kind,order,[item],config,original.text);
     assert.match(email.text,/Color: <img src=x>/);
     assert.match(email.text,/Aroma: Vainilla/);
+    assert.match(email.text,/Color de vela arena: Rosa/);
+    assert.match(email.html,/Color de vela arena: Rosa/);
     assert.ok(email.html.includes('&lt;img src=x&gt;'));
     assert.ok(!email.html.includes('<img src=x>'));
   }

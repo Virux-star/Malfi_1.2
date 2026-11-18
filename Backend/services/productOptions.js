@@ -30,7 +30,9 @@ export function optionList(value, field = 'opciones') {
 
 export function lineKey(item) {
   const time = item.workshopTime ?? item.selected_workshop_time;
-  return JSON.stringify([Number(item.id ?? item.product_id), fold(String(item.color ?? item.selected_color ?? '')), fold(String(item.aroma ?? item.selected_aroma ?? '')), item.workshopDate ?? item.selected_workshop_date ?? '', ...(time ? [fold(time)] : [])]);
+  const sandColor = item.sandColor ?? item.selected_sand_color;
+  return JSON.stringify([Number(item.product_id ?? item.id), fold(String(item.color ?? item.selected_color ?? '')), fold(String(item.aroma ?? item.selected_aroma ?? '')), item.workshopDate ?? item.selected_workshop_date ?? '', ...(time ? [fold(time)] : []),
+    ...(sandColor ? [{ sandColor: fold(sandColor) }] : [])]);
 }
 
 export function normalizeCartLines(value) {
@@ -39,6 +41,7 @@ export function normalizeCartLines(value) {
   return value.map(raw => {
     const item = { id: Number(raw?.id), quantity: Number(raw?.quantity),
       color: raw?.color == null ? '' : label(raw.color), aroma: raw?.aroma == null ? '' : label(raw.aroma),
+      sandColor: label(raw?.sandColor ?? ''),
       workshopDate: raw?.workshopDate ?? '', workshopTime: label(raw?.workshopTime ?? '') };
     if (item.workshopDate !== '' && !validWorkshopDate(item.workshopDate)) throw bad('Fecha del taller no válida.');
     if (!Number.isInteger(item.id) || item.id < 1 || item.id > 2147483647 ||
@@ -61,14 +64,16 @@ export function quantityByProduct(items) {
 
 export function selectedOptions(product, item) {
   const result = {};
-  for (const [field, optionsName] of [['color', 'colors'], ['aroma', 'aromas']]) {
+  const fields = [['color', 'colors', 'color'], ['aroma', 'aromas', 'aroma']];
+  if (product.sand_colors?.length || item.sandColor) fields.push(['sandColor', 'sand_colors', 'color de vela arena']);
+  for (const [field, optionsName, name] of fields) {
     const options = product[optionsName] || [], value = item[field] || '';
     if (!options.length) {
-      if (value) throw bad('El producto ' + product.name + ' no ofrece esa opción de ' + field + '.', 409);
+      if (value) throw bad('El producto ' + product.name + ' no ofrece esa opción de ' + name + '.', 409);
       result[field] = '';
     } else {
       const match = options.find(option => fold(option) === fold(value));
-      if (!match) throw bad('Selecciona un ' + field + ' disponible para ' + product.name + '. Revisa el producto.', 409);
+      if (!match) throw bad('Selecciona un ' + name + ' disponible para ' + product.name + '. Revisa el producto.', 409);
       result[field] = match;
     }
   }
@@ -93,7 +98,7 @@ export function publicProduct(product, admin = false) {
   const images = gallery.length ? gallery.map(image => image.url) : product.image_url ? [product.image_url] : [];
   const { image_gallery, image_public_id, reserved_stock, ...safe } = product;
   return { ...safe, stock: admin ? product.stock : product.stock - (reserved_stock || 0),
-    colors: product.colors || [], aromas: product.aromas || [],
+    colors: product.colors || [], aromas: product.aromas || [], sand_colors: product.sand_colors || [],
     workshop_times: product.category === 'Talleres' ? product.workshop_times || [] : [],
     workshop_dates: product.category === 'Talleres' ? (product.workshop_dates || []).filter(date => admin || date >= chileToday()) : [],
     images, image_url: images[0] || null };
@@ -113,6 +118,7 @@ export function galleryOrder(value, keptUrls, count) {
 
 export function orderItemDescription(item) {
   const options = [item.selected_color && 'Color: ' + item.selected_color, item.selected_aroma && 'Aroma: ' + item.selected_aroma,
+    item.selected_sand_color && 'Color de vela arena: ' + item.selected_sand_color,
     item.selected_workshop_date && 'Fecha: ' + formatWorkshopDate(item.selected_workshop_date),
     item.selected_workshop_time && 'Horario: ' + item.selected_workshop_time].filter(Boolean);
   return item.product_name + (options.length ? ' (' + options.join(' · ') + ')' : '');

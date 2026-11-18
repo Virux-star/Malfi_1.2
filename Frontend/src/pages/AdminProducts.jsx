@@ -15,6 +15,7 @@ const initialForm = {
   stock: "",
   colors: "",
   aromas: "",
+  sandColors: "",
     workshopTimes: "",
     workshopDates: []
 };
@@ -52,6 +53,7 @@ function AdminProducts() {
     formData.append("category", form.category);
     formData.append("stock", form.stock);
     formData.append("colors", JSON.stringify(optionsFromText(form.colors)));
+    formData.append("sandColors", JSON.stringify(optionsFromText(form.sandColors)));
     formData.append("aromas", JSON.stringify(optionsFromText(form.aromas)));
     formData.append("workshopTimes", JSON.stringify(form.category === "Talleres" ? optionsFromText(form.workshopTimes) : []));
     formData.append("workshopDates", JSON.stringify(form.category === "Talleres" ? form.workshopDates : []));
@@ -180,7 +182,7 @@ function AdminProducts() {
         </label>
 
         {form.category === "Talleres" && <WorkshopDatesFields dates={form.workshopDates} times={form.workshopTimes} onChange={handleChange} disabled={uploading} />}
-        <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={uploading} />
+        <ProductOptionsFields colors={form.colors} aromas={form.aromas} sandColors={form.sandColors} onChange={handleChange} disabled={uploading} />
         <ProductImagesInput photos={photos} onChange={setPhotos} disabled={uploading} />
 
         <button type="submit" disabled={uploading}>
