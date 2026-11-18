@@ -1,3 +1,4 @@
+import { clearSavedCoupon } from '../lib/useCartQuote';
 import { restoreCart, addCartItem, setCartQuantity, subtractPurchased } from '../lib/cart';
 
 import { createContext, useContext, useEffect, useState, useRef } from "react";
@@ -31,6 +32,7 @@ export function CartProvider({ children }) {
 
   // Vaciar carrito
   function clearCart() {
+    clearSavedCoupon();
     setItems([]);
   }
 
@@ -43,6 +45,7 @@ export function CartProvider({ children }) {
       const attempt = JSON.parse(localStorage.getItem("malfi_checkout_attempt") || "null");
       if (String(attempt?.orderId) === String(orderId)) localStorage.removeItem("malfi_checkout_attempt");
     } catch { /* The in-memory guard still handles browsers with blocked storage. */ }
+    clearSavedCoupon();
     completedOrders.current.add(String(orderId));
     setItems(old => subtractPurchased(old, purchased));
   }

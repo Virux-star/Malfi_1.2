@@ -1,13 +1,14 @@
+import { rateLimit } from 'express-rate-limit';
+import { catalogPrices, priceCart, couponCode, categories } from '../services/promotions.js';
 import multer from 'multer';
 import { fileTypeFromBuffer } from 'file-type';
-import { optionList, publicProduct, MAX_PHOTOS, normalizeCartLines, quantityByProduct, selectedOptions, galleryOrder } from '../services/productOptions.js';
+import { optionList, publicProduct, MAX_PHOTOS, normalizeCartLines, galleryOrder } from '../services/productOptions.js';
 import { qualifiesForFreeShipping } from '../services/shipping.js';
 import { shippingPolicy } from '../config/fulfillment.js';
 import { workshopDateList, chileToday } from '../services/workshops.js';
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const validId = id => /^[1-9]\d*$/.test(id) && Number(id) <= 2147483647;
-const categories = ['Velas de soja', 'Decoración de concreto', 'Set de velas', 'Talleres', 'Insumos'];
 const fields = 'id,name,description,price,category,stock,reserved_stock,image_url,image_gallery,colors,aromas,workshop_dates,active,created_at';
 
 function productForm(body) {
@@ -48,13 +49,13 @@ export function registerProductRoutes(app, pool, requireAdmin, uploadLimiter, im
 
   app.get('/api/products', handle(async (req, res) => {
     const result = await pool.query('SELECT ' + fields + ' FROM products WHERE active=TRUE ORDER BY created_at DESC,id DESC');
-    res.json(result.rows.map(product => publicProduct(product)));
+    res.json(await catalogPrices(pool, result.rows));
   }));
   app.get('/api/products/:id', handle(async (req, res) => {
     if (!validId(req.params.id)) throw fail('ID de producto no válido.');
     const result = await pool.query('SELECT ' + fields + ' FROM products WHERE id=$1 AND active=TRUE', [req.params.id]);
     if (!result.rowCount) throw fail('Producto no encontrado.', 404);
-    res.json(publicProduct(result.rows[0]));
+    res.json((await catalogPrices(pool, result.rows))[0]);
   }));
   app.get('/api/admin/products', requireAdmin, handle(async (req, res) => {
     const result = await pool.query('SELECT ' + fields + ' FROM products ORDER BY id DESC');
@@ -135,19 +136,12 @@ export function registerProductRoutes(app, pool, requireAdmin, uploadLimiter, im
   app.post('/api/admin/products', uploadLimiter, requireAdmin, photos, handle(save));
   app.put('/api/admin/products/:id', uploadLimiter, requireAdmin, photos, handle(save));
 
-  app.post('/api/checkout/quote', handle(async (req, res) => {
-    const items = normalizeCartLines(req.body?.items), totals = quantityByProduct(items);
-    const result = await pool.query('SELECT ' + fields + ' FROM products WHERE id=ANY($1::int[]) AND active=TRUE', [[...totals.keys()]]);
-    const byId = new Map(result.rows.map(product => [product.id, publicProduct(product)]));
-    const verified = items.map(item => {
-      const product = byId.get(item.id);
-      if (!product) throw fail('Uno de los productos ya no está disponible.', 409);
-      if (totals.get(item.id) > product.stock) throw fail('Stock insuficiente para ' + product.name + '.', 409);
-      return { id: item.id, name: product.name, price: product.price, quantity: item.quantity, image_url: product.image_url,
-        ...selectedOptions(product, item), line_total: product.price * item.quantity };
-    });
-    const subtotal = verified.reduce((total, item) => total + item.line_total, 0);
-    res.json({ items: verified, subtotal, shipping: null, freeShippingEligible: qualifiesForFreeShipping(subtotal),
+  const couponLimit = rateLimit({ windowMs: 60000, limit: 40, skip: req => !req.body?.couponCode,
+    standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Espera un minuto antes de volver a probar el cupón.' } });
+  app.post('/api/checkout/quote', couponLimit, handle(async (req, res) => {
+    const items = normalizeCartLines(req.body?.items);
+    const { couponId, ...quote } = await priceCart(pool, items, couponCode(req.body?.couponCode));
+    res.json({ ...quote, shipping: null, freeShippingEligible: qualifiesForFreeShipping(quote.subtotal),
       freeShippingFromClp: shippingPolicy.freeFromClp, currency: 'CLP' });
   }));
 }

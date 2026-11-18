@@ -510,6 +510,9 @@ function AdminOrders() {
                 ))}
 
                 <h4>Resumen</h4>
+                {Number(selectedOrder.discount_clp)>0 && <div className="orders-admin-total-row">
+                  <span>Ahorro{selectedOrder.coupon_code && ' · Cupón ' + selectedOrder.coupon_code}</span>
+                  <span>{formatPrice(selectedOrder.discount_clp)}</span></div>}
 
                 <div className="orders-admin-total-row">
                   <span>Subtotal</span>

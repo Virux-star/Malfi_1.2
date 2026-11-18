@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import Footer from "./components/Footer";
 import Information from "./pages/Information";
 import OrderResult from "./pages/OrderResult";
+import AdminPromotions from './pages/AdminPromotions';
 import AdminSettings from "./pages/AdminSettings";
 import { useStore } from "./context/StoreContext";
 import { clp } from "./lib/api";
@@ -127,6 +128,7 @@ function App() {
     }
   }, [path]);
 
+  if (path === "/admin/promociones") return <AdminGuard><AdminPromotions /></AdminGuard>;
   if (path === "/admin/configuracion") return <AdminGuard><AdminSettings /></AdminGuard>;
   if (["/terminos", "/privacidad", "/despachos"].includes(path)) return <><Navbar /><Information page={path.slice(1)} /><Footer /></>;
   const orderMatch = path.match(/^\/pedido\/([1-9]\d*)$/);

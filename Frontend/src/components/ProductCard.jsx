@@ -1,12 +1,5 @@
+import SalePrice from '../components/SalePrice';
 function ProductCard({ product }) {
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      maximumFractionDigits: 0
-    }).format(price);
-  };
 
   const outOfStock = Number(product.stock) === 0;
 
@@ -51,7 +44,7 @@ function ProductCard({ product }) {
           </h3>
 
           <p className="product-price">
-            {formatPrice(product.price)}
+            <SalePrice price={product.price} originalPrice={product.originalPrice} percent={product.offerPercent}/>
           </p>
 
         </div>

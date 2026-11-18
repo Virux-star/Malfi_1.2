@@ -1,3 +1,4 @@
+import { useCartQuote, orderLines } from '../lib/useCartQuote';
 import { formatWorkshopDate } from '../lib/workshops';
 import { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
@@ -7,7 +8,8 @@ import './Checkout.css';
 
 export default function Checkout() {
   const {items}=useCart(),{store,error:storeError}=useStore();
-  const [quote,setQuote]=useState(null),[destinations,setDestinations]=useState([]);
+  const {quote, quoteError, code}=useCartQuote(items);
+  const [destinations,setDestinations]=useState([]);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[accepted,setAccepted]=useState(false),[created,setCreated]=useState(null);
   const [selectedProvider,setSelectedProvider]=useState('mercadopago');
   const [deliveryMethod,setDeliveryMethod]=useState('shipping');
@@ -20,11 +22,6 @@ export default function Checkout() {
     api('/api/shipping/destinations',{signal:c.signal}).then(setDestinations).catch(e=>{if(e.name!=='AbortError')setError(e.message);});
     return()=>c.abort();
   },[]);
-  useEffect(()=>{
-    const c=new AbortController();setQuote(null);setError('');
-    if(items.length)api('/api/checkout/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items.map(i=>({id:i.id,quantity:i.quantity,color:i.color||"",aroma:i.aroma||"",workshopDate:i.workshopDate||""}))}),signal:c.signal}).then(setQuote).catch(e=>{if(e.name!=='AbortError')setError(e.message);});
-    return()=>c.abort();
-  },[items]);
   const regions=(store?.regions||[]).filter(r=>destinations.some(d=>d.region===r));
   const comunas=destinations.filter(d=>d.region===form.region);
   const shipping=comunas.find(d=>d.comuna===form.comuna);
@@ -37,7 +34,7 @@ export default function Checkout() {
     e.preventDefault();if(busy||!deliveryAvailable||!accepted||!store?.checkoutAvailable||!quote||!provider||created)return;
     setBusy(true);setError('');
     try{
-      const payload={customer:pickup?{fullName:form.fullName,email:form.email,phone:form.phone}:form,...(pickup?{deliveryMethod:'pickup'}:{}),items:items.map(i=>({id:i.id,quantity:i.quantity,color:i.color||"",aroma:i.aroma||"",workshopDate:i.workshopDate||""})),expectedTotal:total,paymentProvider:provider?.id,acceptTerms:true,termsVersion:store.business.policiesVersion};
+      const payload={customer:pickup?{fullName:form.fullName,email:form.email,phone:form.phone}:form,...(pickup?{deliveryMethod:'pickup'}:{}),items:orderLines(items),...(code?{couponCode:code}:{}),expectedTotal:total,paymentProvider:provider?.id,acceptTerms:true,termsVersion:store.business.policiesVersion};
       const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload))))).map(x=>x.toString(16).padStart(2,'0')).join('');
       let prior;try{prior=JSON.parse(localStorage.getItem('malfi_checkout_attempt'));}catch{}
       const key=prior?.hash===hash?prior.key:crypto.randomUUID();
@@ -53,7 +50,7 @@ export default function Checkout() {
   if(!items.length)return <main className="checkout-empty"><h1>Tu carrito está vacío</h1><p>Elige tus favoritos para comenzar.</p><a href="/#tienda">Explorar colección</a></main>;
   return <main className="checkout-page"><div className="checkout-container">
     <header className="checkout-header"><h1>Finalizar compra</h1><p>Elige cómo recibir tu pedido.</p></header>
-    {(storeError||error)&&<p role="alert" className="checkout-error">{storeError||error} <a href="/carrito">Revisar carrito</a></p>}
+    {(storeError||error||quoteError)&&<p role="alert" className="checkout-error">{storeError||error||quoteError} <a href="/carrito">Revisar carrito</a></p>}
     {store&&!store.checkoutAvailable&&<p role="status" className="notice">Estamos preparando la tienda para recibir compras. Puedes conocer la colección y contactarnos en <a href="https://www.instagram.com/malfi.candles/" target="_blank" rel="noreferrer">Instagram</a>.</p>}
     {provider?.mode==='integration'&&<p className="notice">Ambiente de prueba: no se realizan cobros reales.</p>}
     <div className="checkout-layout"><section className="checkout-form-section"><h2>Datos de contacto y entrega</h2>
@@ -84,6 +81,7 @@ export default function Checkout() {
     </section><aside className="checkout-summary"><h2>Tu pedido</h2>
       {!quote&&!error&&<p role="status">Verificando precios y disponibilidad…</p>}
       {quote&&<>{quote.items.map(i=><div className="checkout-product" key={JSON.stringify([i.id,i.color,i.aroma,i.workshopDate])}>{i.image_url&&<img src={i.image_url} alt=""/>}<div className="checkout-product-info"><h3>{i.name}</h3>{(i.color||i.aroma)&&<p>{[i.color&&("Color: "+i.color),i.aroma&&("Aroma: "+i.aroma)].filter(Boolean).join(" · ")}</p>}{i.workshopDate&&<p>Fecha: {formatWorkshopDate(i.workshopDate)}</p>}<p>Cantidad: {i.quantity}</p><strong>{clp(i.line_total)}</strong></div></div>)}
+      {quote.discount>0 && <div className="checkout-summary-line"><span>Ahorro{quote.couponCode && ' · Cupón ' + quote.couponCode}</span><strong>{clp(quote.discount)}</strong></div>}
       <div className="checkout-summary-line"><span>Subtotal</span><strong>{clp(quote.subtotal)}</strong></div>
       <div className="checkout-summary-line"><span>{pickup?'Retiro en tienda':`Despacho${shipping?` · ${shipping.carrier}`:''}`}</span><strong>{pickup?'Sin costo':shipping?shippingCost===0?'Gratis':clp(shippingCost):'Selecciona un destino'}</strong></div>
       {!pickup&&freeFrom!=null&&<p className="checkout-shipping-note" role="status">{quote.freeShippingEligible?'Tu compra tiene despacho gratis en destinos habilitados.':`Despacho gratis desde ${clp(freeFrom)} en productos.`}</p>}

@@ -1,3 +1,4 @@
+import SalePrice from '../components/SalePrice';
 import { formatWorkshopDate, unitQuantity } from '../lib/workshops';
 import QuantityInput from '../components/QuantityInput';
 import { productQuantity, cartKey } from '../lib/cart';
@@ -99,13 +100,6 @@ function handleAddToCart() {
   const isWorkshop = product?.category === "Talleres";
   const selectionReady = (!isWorkshop || !!product?.workshop_dates?.includes(workshopDate)) && (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma);
 
-  const formatPrice = (price) =>
-    new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      maximumFractionDigits: 0
-    }).format(price);
-
   return (
     <main className="product-detail-page">
       <div className="product-detail-container">
@@ -145,7 +139,7 @@ function handleAddToCart() {
               <h1>{product.name}</h1>
 
               <p className="detail-price">
-                {formatPrice(product.price)}
+                <SalePrice price={product.price} originalPrice={product.originalPrice} percent={product.offerPercent}/>
               </p>
 
               <div className="detail-divider" />

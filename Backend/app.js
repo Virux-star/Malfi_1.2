@@ -1,3 +1,4 @@
+import { registerPromotions } from './routes/promotions.js';
 import { registerProductRoutes } from './routes/products.js';
 import "dotenv/config";
 import express from "express";
@@ -190,6 +191,7 @@ async function requireAdmin(req, res, next) {
 
 if (!config.production) registerWebpayTest(app, pool, requireAdmin);
 registerStoreRoutes(app, pool, requireAdmin, config);
+registerPromotions(app, pool, requireAdmin);
 const mpClient=mercadoPagoClient===undefined?createMercadoPagoClient(config):mercadoPagoClient;
 registerMercadoPagoCheckout(app,pool,config,mpClient);
 const flow=flowClient===undefined?createFlowClient(config):flowClient;
@@ -457,6 +459,7 @@ app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
         shipping_reference,
         carrier,
         delivery_method,
+        discount_clp, coupon_code,
         subtotal_clp,
         shipping_clp,
         total_clp,

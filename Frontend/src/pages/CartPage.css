@@ -257,3 +257,13 @@ a.cart-checkout:hover {
 
 .cart-quantity input{width:60px;height:40px;min-width:0;text-align:center;border:0;background:transparent;color:#49382e;font:inherit;padding:0 .2rem}
 .cart-quantity input:focus-visible{outline:2px solid #92745f;outline-offset:-2px}
+
+.cart-coupon{margin-bottom:1rem}
+.cart-coupon label{display:block;margin-bottom:.5rem;font-size:.9rem}
+.cart-coupon div{display:flex}
+.cart-coupon input,.cart-coupon button{font:inherit;padding:.65rem;border:1px solid #bba997}
+.cart-coupon input{min-width:0;width:100%}
+.cart-coupon button{background:#49382e;color:white;cursor:pointer}
+.coupon-feedback{font-size:.9rem;margin:.5rem 0}
+.coupon-feedback button,.cart-summary [role=alert] button{color:inherit;background:none;text-decoration:underline;border:0;cursor:pointer;font:inherit}
+.cart-summary [role=alert]{color:#90351e}
