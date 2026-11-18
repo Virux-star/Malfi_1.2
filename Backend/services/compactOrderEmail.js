@@ -33,12 +33,14 @@ export function compactOrderEmail(kind, order, items, config, confirmationText) 
   const costValue = pickup ? 'Sin costo' : Number(order.shipping_clp) === 0 ? 'Gratis' : clp(order.shipping_clp);
   const contact = [business.email, business.phone].filter(Boolean).join(' · ');
   const note = admin ? '' : 'Adjuntamos el comprobante con las condiciones y los datos legales de tu compra.';
+  const savings = Number(order.discount_clp) > 0
+    ? `Ahorro${order.coupon_code ? ' · Cupón ' + order.coupon_code : ''}: ${clp(order.discount_clp)}` : '';
   const text = [
     `MALFI${test ? ' · PRUEBA SIN COBRO REAL' : ''}`, title, intro, `Pedido #${order.id}`,
     admin && `Cliente: ${order.customer_name}`,
     admin && `Contacto del cliente: ${order.customer_email} · ${order.customer_phone}`,
     ...items.map(item => `${orderItemDescription(item)} · ${item.quantity} × ${clp(item.unit_price_clp)} = ${clp(item.line_total_clp)}`),
-    `Subtotal: ${clp(order.subtotal_clp)}`, `${costLabel}: ${costValue}`,
+    savings, `Subtotal: ${clp(order.subtotal_clp)}`, `${costLabel}: ${costValue}`,
     `Total pagado: ${clp(order.total_clp)}`, `${deliveryLabel}: ${delivery}`, pickup ? period : `Plazo estimado: ${period}`,
     `${action}: ${url}`, note, contact && `¿Necesitas ayuda? ${contact}`
   ].filter(Boolean).join('\n');
@@ -58,6 +60,7 @@ export function compactOrderEmail(kind, order, items, config, confirmationText) 
     <p style="font-size:14px;margin:0 0 8px"><strong>Pedido #${escape(order.id)}</strong></p>
     ${admin ? `<p style="font-size:14px;line-height:1.6;margin:0 0 12px">Cliente: ${escape(order.customer_name)}<br>${escape(order.customer_email)} · ${escape(order.customer_phone)}</p>` : ''}
     <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.5">${rows}
+      ${savings ? `<tr><td colspan="2" style="padding-top:12px">${escape(savings)}</td></tr>` : ''}
       <tr><td style="padding-top:14px">Subtotal</td><td style="padding-top:14px;text-align:right">${escape(clp(order.subtotal_clp))}</td></tr>
       <tr><td style="padding:8px 0 14px">${escape(costLabel)}</td><td style="padding:8px 0 14px;text-align:right">${escape(costValue)}</td></tr>
       <tr><td style="padding-top:14px;border-top:1px solid #e9dfd1"><strong>Total pagado</strong></td><td style="padding-top:14px;border-top:1px solid #e9dfd1;text-align:right;white-space:nowrap"><strong>${escape(clp(order.total_clp))}</strong></td></tr>

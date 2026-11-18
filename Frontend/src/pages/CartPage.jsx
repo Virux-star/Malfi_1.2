@@ -1,6 +1,9 @@
 import { formatWorkshopDate } from '../lib/workshops';
 import QuantityInput from '../components/QuantityInput';
-import { productQuantity } from '../lib/cart';
+import { useState } from 'react';
+import { useCartQuote } from '../lib/useCartQuote';
+import SalePrice from '../components/SalePrice';
+import { cartKey, productQuantity } from '../lib/cart';
 
 import { useCart } from "../context/CartContext";
 import { useStore } from "../context/StoreContext";
@@ -10,12 +13,14 @@ function CartPage() {
   const {
     items,
     updateQuantity,
-    removeFromCart,
-    subtotal
+    removeFromCart
   } = useCart();
   const { store } = useStore();
   const freeFrom = store?.shippingPolicy?.freeFromClp;
-  const freeShipping = freeFrom != null && subtotal >= freeFrom;
+  const { code, apply, quote, quoteError } = useCartQuote(items);
+  const [input, setInput] = useState(code);
+  const reviewed = new Map((quote?.items || []).map(row => [cartKey(row), row]));
+  const freeShipping = quote?.freeShippingEligible;
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("es-CL", {
@@ -78,7 +83,7 @@ function CartPage() {
                     {(item.color || item.aroma) && <p>{[item.color && ("Color: " + item.color), item.aroma && ("Aroma: " + item.aroma)].filter(Boolean).join(" · ")}</p>}
                     {item.workshopDate && <p>Fecha: {formatWorkshopDate(item.workshopDate)}</p>}
                     <p className="cart-unit-price">
-                      {formatPrice(item.price)}
+                      {reviewed.has(item.key) && <SalePrice price={reviewed.get(item.key).price} originalPrice={reviewed.get(item.key).originalPrice}/>}
                     </p>
 
                     <div className="cart-quantity">
@@ -128,7 +133,7 @@ function CartPage() {
                   </div>
 
                   <p className="cart-item-total">
-                    {formatPrice(item.price * item.quantity)}
+                    {reviewed.has(item.key) && formatPrice(reviewed.get(item.key).line_total)}
                   </p>
 
                 </article>
@@ -141,21 +146,29 @@ function CartPage() {
 
               <h2>Resumen de compra</h2>
 
-              <div className="cart-summary-row">
-                <span>Subtotal</span>
-                <strong>{formatPrice(subtotal)}</strong>
+              <form className="cart-coupon" onSubmit={e => { e.preventDefault(); apply(input); }}>
+                <label htmlFor="cart-coupon-code">Cupón de descuento</label>
+                <div><input id="cart-coupon-code" value={input} onChange={e => setInput(e.target.value)}
+                  maxLength={32} autoCapitalize="characters" placeholder="Ingresa tu código"/>
+                  <button disabled={!input.trim()} type="submit">Aplicar</button></div>
+              </form>
+              {code && <p className="coupon-feedback">{quote?.couponCode ? 'Cupón aplicado · ' + quote.couponCode : code}
+                {' '}<button type="button" onClick={() => { setInput(''); apply(''); }}>Quitar cupón</button></p>}
+              {quoteError && <p role="alert">{quoteError} <button type="button" onClick={() => apply(code)}>Reintentar</button></p>}
+              {!quote && !quoteError && <p role="status">Calculando precios…</p>}
+              {quote && <><div className="cart-summary-row">
+                <span>Productos</span><strong>{formatPrice(quote.originalSubtotal)}</strong>
               </div>
-
+              {quote.discount > 0 && <div className="cart-summary-row"><span>Descuento</span><strong>−{formatPrice(quote.discount)}</strong></div>}
               <div className="cart-summary-row">
-                <span>Despacho</span>
-                <span>{freeShipping ? 'Gratis' : 'Por calcular'}</span>
-              </div>
+                <span>Despacho</span><span>{freeShipping ? 'Gratis' : 'Por calcular'}</span>
+              </div></>}
 
               <div className="cart-summary-divider" />
 
               <div className="cart-summary-row cart-summary-total">
                 <span>Subtotal</span>
-                <strong>{formatPrice(subtotal)}</strong>
+                <strong>{quote ? formatPrice(quote.subtotal) : '—'}</strong>
               </div>
 
               <p className="cart-summary-note">
@@ -164,9 +177,8 @@ function CartPage() {
                   : <>El valor del despacho se calculará al ingresar la dirección de entrega.{freeFrom != null && ` Despacho gratis desde ${formatPrice(freeFrom)} en productos.`}</>}
               </p>
 
-              <a href="/checkout" className="cart-checkout">
-  Continuar con mis datos
-</a>
+              {quote ? <a href="/checkout" className="cart-checkout">Continuar con mis datos</a>
+                : <button className="cart-checkout" disabled>Continuar con mis datos</button>}
 
               <a href="/#tienda" className="cart-continue">
                 ← Seguir comprando

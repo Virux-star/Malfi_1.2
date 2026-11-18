@@ -89,7 +89,7 @@ function AdminGuard({ children }) {
     <>
       <div className="admin-topbar">
         <span>Administración MALFI</span>
-        <nav aria-label="Administración"><a href="/admin">Fotografía principal</a><a href="/admin/productos">Productos</a><a href="/admin/pedidos">Pedidos</a><a href="/admin/configuracion">Configuración y despachos</a><a href="/">Ver tienda</a></nav>
+        <nav aria-label="Administración"><a href="/admin">Fotografía principal</a><a href="/admin/productos">Productos</a><a href="/admin/promociones">Promociones</a><a href="/admin/pedidos">Pedidos</a><a href="/admin/configuracion">Configuración y despachos</a><a href="/">Ver tienda</a></nav>
         <button type="button" className="secondary-button" onClick={handleLogout}>Cerrar sesión</button>
       </div>
 

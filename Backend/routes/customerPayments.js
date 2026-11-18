@@ -2,7 +2,8 @@ import { providerMode, providerAvailable } from '../config/paymentProviders.js';
 import { startMercadoPago, reconcileMpCheckout } from '../services/mercadoPago.js';
 import { startFlow, reconcileFlowCheckout, flowCredentialId } from '../services/flow.js';
 import { rateLimit } from 'express-rate-limit';
-import { normalizeCartLines, quantityByProduct, selectedOptions } from '../services/productOptions.js';
+import { priceCart, couponCode } from '../services/promotions.js';
+import { normalizeCartLines } from '../services/productOptions.js';
 import { readiness } from '../services/store.js';
 import { resolveShipping, shippingPrice } from '../services/shipping.js';
 import { pickupLocation } from '../config/fulfillment.js';
@@ -31,12 +32,12 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     customer.email=customer.email.toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)||!/^[+0-9\s()-]{8,25}$/.test(customer.phone)) throw fail('Revisa tu correo y teléfono.',400);
     const items=normalizeCartLines(req.body.items);
-    const quantities=quantityByProduct(items);
+    const code=couponCode(req.body.couponCode);
     if (req.body.acceptTerms!==true) throw fail('Debes aceptar los términos y la política de privacidad.',400);
     const provider=req.body.paymentProvider||'webpay';
     if (!['webpay','mercadopago','flow'].includes(provider)) throw fail('Elige un medio de pago válido.',400);
     // Preserve fingerprints for existing carts; include the date only when selected.
-    const fingerprint=digest(JSON.stringify({customer,items:items.map(i=>({id:i.id,quantity:i.quantity,...(i.color||i.aroma?{color:i.color,aroma:i.aroma}:{}),...(i.workshopDate?{workshopDate:i.workshopDate}:{})})),termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{})}));
+    const fingerprint=digest(JSON.stringify({customer,items:items.map(i=>({id:i.id,quantity:i.quantity,...(i.color||i.aroma?{color:i.color,aroma:i.aroma}:{}),...(i.workshopDate?{workshopDate:i.workshopDate}:{})})),termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{}),...(code?{couponCode:code}:{})}));
     const token=orderToken(key,config);
     const client=await pool.connect();
     let order;
@@ -52,15 +53,8 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
         if (!providerAvailable(config,provider)) throw fail('El medio de pago elegido no está disponible.',503);
         if (!state.ready) throw fail('Estamos preparando la tienda para recibir compras. Contáctanos si necesitas ayuda.',503);
         if (req.body.termsVersion!==state.store.policiesVersion) throw fail('Las condiciones de compra cambiaron. Recarga la página para revisarlas.');
-        const products=(await client.query('SELECT id,name,price,category,stock,reserved_stock,colors,aromas,workshop_dates FROM products WHERE id=ANY($1::int[]) AND active=TRUE ORDER BY id FOR UPDATE',[[...quantities.keys()]])).rows;
-        const byId=new Map(products.map(p=>[p.id,p]));
-        let subtotal=0;
-        for (const i of items) {
-          const p=byId.get(i.id);
-          if (!p||p.stock-p.reserved_stock<quantities.get(i.id)) throw fail(`Uno de los productos no tiene stock suficiente. Revisa tu carrito.`);
-          selectedOptions(p,i);
-          subtotal+=p.price*i.quantity;
-        }
+        const quote = await priceCart(client, items, code, { reserve: true });
+        const { subtotal } = quote;
         const rate=pickup?{...pickupLocation,carrier:'Retiro en tienda',price_clp:0,delivery_days_min:0,delivery_days_max:0}
           :await resolveShipping(client,customer.region,customer.comuna,{lock:true});
         if (!rate) throw fail('No tenemos despacho configurado para este destino.');
@@ -69,15 +63,17 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
         if (!Number.isSafeInteger(total)||total<1||total>999999999) throw fail('El monto del pedido supera el límite permitido.',400);
         // Explicit review of current server totals prevents an unnoticed price change.
         if (req.body.expectedTotal!==total) throw fail('El precio o despacho cambió. Recarga la página y revisa el total antes de pagar.');
-        order=(await client.query(`INSERT INTO orders(customer_name,customer_email,customer_phone,shipping_region,shipping_comuna,shipping_address,shipping_reference,carrier,subtotal_clp,shipping_clp,total_clp,inventory_reserved,checkout_key,checkout_fingerprint,access_token_hash,payment_mode,expires_at,terms_version,accepted_at,business_snapshot,delivery_days_min,delivery_days_max,payment_provider,delivery_method)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,now()+interval '60 minutes',$16,now(),$17,$18,$19,$20,$21) RETURNING *`,[
-            customer.fullName,customer.email,customer.phone,rate.region,rate.comuna,customer.address,customer.reference||null,rate.carrier,subtotal,shippingClp,total,key,fingerprint,digest(token),providerMode(config,provider),state.store.policiesVersion,state.store,rate.delivery_days_min+state.store.preparationDays,rate.delivery_days_max+state.store.preparationDays,provider,deliveryMethod
+        order=(await client.query(`INSERT INTO orders(customer_name,customer_email,customer_phone,shipping_region,shipping_comuna,shipping_address,shipping_reference,carrier,subtotal_clp,shipping_clp,total_clp,inventory_reserved,checkout_key,checkout_fingerprint,access_token_hash,payment_mode,expires_at,terms_version,accepted_at,business_snapshot,delivery_days_min,delivery_days_max,payment_provider,delivery_method,discount_clp,coupon_id,coupon_code)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,now()+interval '60 minutes',$16,now(),$17,$18,$19,$20,$21,$22,$23,$24) RETURNING *`,[
+            customer.fullName,customer.email,customer.phone,rate.region,rate.comuna,customer.address,customer.reference||null,rate.carrier,subtotal,shippingClp,total,key,fingerprint,digest(token),providerMode(config,provider),state.store.policiesVersion,state.store,rate.delivery_days_min+state.store.preparationDays,rate.delivery_days_max+state.store.preparationDays,provider,deliveryMethod,quote.discount,quote.couponId,quote.couponCode
           ])).rows[0];
-        for (const i of items) {
-          const p=byId.get(i.id);
-          await client.query('UPDATE products SET reserved_stock=reserved_stock+$1 WHERE id=$2',[i.quantity,i.id]);
-          const choice=selectedOptions(p,i);
-          await client.query('INSERT INTO order_items(order_id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma,selected_workshop_date) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[order.id,p.id,p.name,p.price,i.quantity,p.price*i.quantity,choice.color||null,choice.aroma||null,choice.workshopDate||null]);
+        for (const item of quote.items) {
+          await client.query('UPDATE products SET reserved_stock=reserved_stock+$1 WHERE id=$2',[item.quantity,item.id]);
+          await client.query(`INSERT INTO order_items(order_id,product_id,product_name,unit_price_clp,quantity,line_total_clp,
+            selected_color,selected_aroma,selected_workshop_date,original_price_clp,promotion_name)
+            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            [order.id,item.id,item.name,item.price,item.quantity,item.line_total,item.color||null,item.aroma||null,
+              item.workshopDate||null,item.originalPrice,item.promotionName]);
         }
       }
       await client.query('COMMIT');
@@ -113,7 +109,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
       canPay=Boolean(payable&&(!p||p.state==='failed'||(p.state==='created'&&Date.now()-new Date(p.created_at)<4*60_000)));
     }
     const items=(await pool.query('SELECT id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma,selected_workshop_date FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
-    res.json({id:o.id,status:o.status,paymentStatus:o.payment_status,mode:o.payment_mode,total:Number(o.total_clp),subtotal:Number(o.subtotal_clp),shipping:Number(o.shipping_clp),carrier:o.carrier,comuna:o.shipping_comuna,
+    res.json({id:o.id,status:o.status,paymentStatus:o.payment_status,mode:o.payment_mode,total:Number(o.total_clp),subtotal:Number(o.subtotal_clp),discount:Number(o.discount_clp),couponCode:o.coupon_code,shipping:Number(o.shipping_clp),carrier:o.carrier,comuna:o.shipping_comuna,
       deliveryDaysMin:o.delivery_days_min,deliveryDaysMax:o.delivery_days_max,createdAt:o.created_at,paidAt:o.paid_at,expiresAt:o.expires_at,trackingUrl:o.tracking_url,trackingNumber:o.tracking_number,
       deliveryMethod:o.delivery_method,pickupAddress:o.delivery_method==='pickup'?`${o.shipping_address}, ${o.shipping_comuna}`:null,
       canPay,paymentProvider:o.payment_provider,requiresPaymentReview,payment:p||null,items});
