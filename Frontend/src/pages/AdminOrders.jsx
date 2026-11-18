@@ -490,12 +490,13 @@ function AdminOrders() {
 
                 {selectedOrder.items.map((item) => (
                   <div
-                    key={item.id || JSON.stringify([item.product_id,item.selected_color,item.selected_aroma,item.selected_workshop_date])}
+                    key={item.id || JSON.stringify([item.product_id,item.selected_color,item.selected_aroma,item.selected_workshop_date,item.selected_workshop_time])}
                     className="orders-admin-product"
                   >
                     <div>
                       <strong>{item.product_name}</strong>
                       {item.selected_workshop_date && <p>Fecha: {formatWorkshopDate(item.selected_workshop_date)}</p>}
+                      {item.selected_workshop_time && <p>Horario: {item.selected_workshop_time}</p>}
                       {(item.selected_color || item.selected_aroma) && <p>{[item.selected_color && ("Color: " + item.selected_color), item.selected_aroma && ("Aroma: " + item.selected_aroma)].filter(Boolean).join(" · ")}</p>}
                       <p>
                         {item.quantity} ×{" "}

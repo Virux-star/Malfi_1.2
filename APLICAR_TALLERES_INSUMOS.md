@@ -6,18 +6,17 @@
 2. Ingresa el precio de un cupo y el total de cupos disponibles en stock.
 3. En **Fechas disponibles del taller**, elige la fecha con el calendario.
 4. Usa **Agregar otra fecha** si hay más de una. Se admiten hasta 20 fechas.
-5. Guarda o publica el producto con sus fotografías.
+5. En **Horarios disponibles del taller**, escribe un turno por línea, por ejemplo `AM` y `PM`, o las horas exactas. Puedes dejarlo vacío si el cliente solo debe elegir fecha.
+6. Guarda el producto.
 
-El cliente debe elegir una fecha antes de agregar el taller al carrito. Puede
-seleccionar cuántos cupos comprar. La fecha aparece en carrito, checkout, pedido
-y correos al cliente y a la tienda. Las fechas pasadas dejan de ofrecerse según
-el día de Chile. Editar fechas no cambia las aceptadas en pedidos anteriores.
+Los horarios ofrecidos se aplican a todas las fechas del taller. Si hay horarios,
+el cliente elige fecha y horario antes de agregar sus cupos al carrito. Ambos
+datos aparecen en el pedido y en los correos de confirmación. Las fechas
+pasadas dejan de ofrecerse según el día de Chile. Los pedidos conservan la
+selección que hizo el cliente aunque luego se edite el taller.
 
-El stock es el **total compartido entre todas las fechas**, igual que el stock
-de colores y aromas. Esta versión no administra cupos separados por fecha ni
-horarios dentro de un mismo día. Para cupos independientes, publica un taller
-por fecha con su propio stock. Los talleres anteriores deben editarse para
-agregarles fechas antes de que el cliente pueda comprarlos.
+El precio es por cupo. El **total de cupos** se comparte entre todas las fechas
+y horarios de esa publicación.
 
 ## Publicar un insumo
 
@@ -31,8 +30,8 @@ No se agregan presentaciones por peso o volumen con precios distintos.
 
 ## Despliegue
 
-El arranque normal `node scripts/start.mjs` aplica automáticamente la migración
-`011_workshop_dates.sql` antes de iniciar el servidor. No cambies migraciones ya
+El arranque normal `node scripts/start.mjs` aplica automáticamente las migraciones de fechas
+(`011_workshop_dates.sql`) y horarios (`013_workshop_times.sql`) antes de iniciar el servidor. No cambies migraciones ya
 aplicadas. No se necesitan variables de entorno nuevas.
 
 ## Verificación

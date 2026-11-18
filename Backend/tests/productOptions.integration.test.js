@@ -163,6 +163,46 @@ test('opciones y galería: publicación, validación, reservas y compra con Post
       assert.deepEqual((await pool.query('SELECT stock,reserved_stock FROM products WHERE id=$1',[workshop.id])).rows[0],{stock:3,reserved_stock:0});
       assert.deepEqual((await request('/api/orders/'+order.data.orderId,{token:order.data.accessToken})).data.items.map(item=>item.selected_workshop_date),dates);
     });
+    await t.test('publica y edita horarios, reserva AM y PM en la misma fecha y conserva ambos en el pedido', async () => {
+      const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const values = { name:'Taller con turnos', category:'Talleres', colors:'[]', aromas:'[]',
+        workshopDates:JSON.stringify([date]), workshopTimes:JSON.stringify(['AM', 'PM', 'pm']) };
+      const created = await request('/api/admin/products', { auth:true, form:form(values, 1) });
+      assert.equal(created.status, 201, JSON.stringify(created.data));
+      const workshop = created.data.product;
+      const path = '/api/admin/products/' + workshop.id;
+      assert.deepEqual((await request('/api/products/' + workshop.id)).data.workshop_times, ['AM', 'PM']);
+      const edit = { ...values, keepImages:JSON.stringify(workshop.images), photoOrder:JSON.stringify(workshop.images) };
+      delete edit.workshopTimes;
+      const legacy = await request(path, { method:'PUT', auth:true, form:form(edit) });
+      assert.deepEqual(legacy.data.product.workshop_times, ['AM', 'PM']);
+      const quote = items => request('/api/checkout/quote', { body:{items} });
+      const line = { id:workshop.id, quantity:1, workshopDate:date };
+      for (const time of ['', 'Noche']) assert.equal((await quote([{ ...line, workshopTime:time }])).status, 409);
+      const selections = ['am', 'PM'].map(workshopTime => ({...line, workshopTime}));
+      const reviewed = await quote(selections);
+      assert.equal(reviewed.data.subtotal, 50000);
+      assert.deepEqual(reviewed.data.items.map(i => i.workshopTime), ['AM', 'PM']);
+      assert.equal((await quote(selections.map(i => ({...i, quantity:3})))).status, 409);
+      const key = randomUUID(), order = await request('/api/orders', { body:payload(selections), key });
+      assert.equal(order.status, 201, JSON.stringify(order.data));
+      const mismatch = await request('/api/orders', { body:payload([selections[0], {...selections[1], workshopTime:'Noche'}]), key });
+      assert.equal(mismatch.status, 409);
+      assert.match(mismatch.data.error, /otros datos/);
+      const updated = await request(path, { method:'PUT', auth:true, form:form({...edit, workshopTimes:'["Tarde"]'}) });
+      assert.deepEqual(updated.data.product.workshop_times, ['Tarde']);
+      assert.equal((await quote(selections)).status, 409);
+      assert.equal((await request('/api/orders', { body:payload(selections), key })).data.orderId, order.data.orderId);
+      const read = await request('/api/orders/' + order.data.orderId, { token:order.data.accessToken });
+      const managed = await request('/api/admin/orders/' + order.data.orderId, { auth:true });
+      for (const result of [read, managed]) {
+        assert.deepEqual(result.data.items.map(i => i.selected_workshop_time), ['AM', 'PM']);
+        assert.deepEqual(result.data.items.map(i => i.selected_workshop_date), [date, date]);
+      }
+      const cleared = await request(path, { method:'PUT', auth:true, form:form({...edit, workshopTimes:'[]'}) });
+      assert.deepEqual(cleared.data.product.workshop_times, []);
+      assert.equal((await quote([line])).status, 200);
+    });
     await t.test('los insumos se cotizan por unidades con precio del servidor y límite de stock', async () => {
       const created = await request('/api/admin/products',{form:form({name:'Mechas QA',category:'Insumos',price:'500',stock:'12',colors:'[]',aromas:'[]'},1),auth:true});
       assert.equal(created.status,201,JSON.stringify(created.data));

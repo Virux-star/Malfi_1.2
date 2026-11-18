@@ -17,6 +17,7 @@ function ProductDetail({ productId }) {
   const [color, setColor] = useState("");
   const [aroma, setAroma] = useState("");
   const [workshopDate, setWorkshopDate] = useState("");
+  const [workshopTime, setWorkshopTime] = useState("");
   const [photoIndex, setPhotoIndex] = useState(0);
 const [cartMessage, setCartMessage] = useState("");
 
@@ -25,10 +26,10 @@ const { items, addToCart } = useCart();
 function handleAddToCart() {
   if (!product || product.stock <= 0) return;
 
-  if ((product.category === "Talleres" && !product.workshop_dates?.includes(workshopDate)) || (product.colors?.length && !color) || (product.aromas?.length && !aroma)) {
+  if (!selectionReady) {
     setCartMessage("Selecciona las opciones de tu producto."); return;
   }
-  const key = cartKey({ id: product.id, color, aroma, workshopDate });
+  const key = cartKey({ id: product.id, color, aroma, workshopDate, workshopTime });
   if (items.length >= 30 && !items.some(item => item.key === key)) {
     setCartMessage("El carrito admite hasta 30 selecciones distintas."); return;
   }
@@ -45,7 +46,7 @@ function handleAddToCart() {
 
   const amount = unitQuantity(quantity, availableToAdd);
 
-  addToCart(product, amount, { color, aroma, workshopDate });
+  addToCart(product, amount, { color, aroma, workshopDate, workshopTime });
   setQuantity(1);
 
   setCartMessage(
@@ -60,7 +61,7 @@ function handleAddToCart() {
       setLoading(true);
       setError("");
       setProduct(null);
-      setColor(""); setAroma(""); setWorkshopDate(""); setPhotoIndex(0); setQuantity(1); setCartMessage("");
+      setColor(""); setAroma(""); setWorkshopDate(""); setWorkshopTime(""); setPhotoIndex(0); setQuantity(1); setCartMessage("");
 
       try {
         const response = await fetch(
@@ -98,7 +99,8 @@ function handleAddToCart() {
   const photos = product?.images?.length ? product.images : product?.image_url ? [product.image_url] : [];
   const availableToAdd = product ? Math.max(0, Math.min(product.stock, 100) - productQuantity(items, product.id)) : 0;
   const isWorkshop = product?.category === "Talleres";
-  const selectionReady = (!isWorkshop || !!product?.workshop_dates?.includes(workshopDate)) && (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma);
+  const selectionReady = (!isWorkshop || !!product?.workshop_dates?.includes(workshopDate)) &&
+    (!product?.workshop_times?.length || product.workshop_times.includes(workshopTime)) && (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma);
 
   return (
     <main className="product-detail-page">
@@ -172,6 +174,12 @@ function handleAddToCart() {
                   <select value={workshopDate} onChange={event => { setWorkshopDate(event.target.value); setCartMessage(''); }} disabled={!product.workshop_dates?.length}>
                     <option value="">Selecciona una fecha</option>
                     {(product.workshop_dates || []).map(date => <option key={date} value={date}>{formatWorkshopDate(date)}</option>)}
+                  </select>
+                </label>}
+                {isWorkshop && product.workshop_times?.length > 0 && <label>Horario del taller
+                  <select value={workshopTime} onChange={event => { setWorkshopTime(event.target.value); setCartMessage(''); }}>
+                    <option value="">Selecciona un horario</option>
+                    {product.workshop_times.map(time => <option key={time} value={time}>{time}</option>)}
                   </select>
                 </label>}
                 {isWorkshop && !product.workshop_dates?.length && <p role="status">Pronto publicaremos nuevas fechas para este taller.</p>}
