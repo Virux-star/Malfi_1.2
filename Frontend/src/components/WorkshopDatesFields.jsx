@@ -1,12 +1,12 @@
 import { chileToday } from '../lib/workshops';
 import './WorkshopDatesFields.css';
 
-export default function WorkshopDatesFields({ dates, onChange, disabled }) {
+export default function WorkshopDatesFields({ dates, times, onChange, disabled }) {
   const update = next => onChange({ target: { name: 'workshopDates', value: next } });
   const rows = dates.length ? dates : [''];
   return <fieldset className="workshop-dates-fields" disabled={disabled}>
     <legend>Fechas disponibles del taller</legend>
-    <p>Agrega hasta 20 fechas. El cliente deberá elegir una antes de comprar. El precio es por cupo y el stock es el total compartido entre todas las fechas.</p>
+    <p>Agrega hasta 20 fechas. El cliente deberá elegir una antes de comprar. El precio es por cupo y los cupos se comparten entre todas las fechas y horarios.</p>
     {rows.map((date, index) => <div className="workshop-date-row" key={index}>
       <label>Fecha {index + 1}
         <input type="date" value={date} min={chileToday()} max="9999-12-31" required
@@ -16,5 +16,9 @@ export default function WorkshopDatesFields({ dates, onChange, disabled }) {
         onClick={() => update(rows.filter((_, i) => i !== index))}>Quitar</button>}
     </div>)}
     <button type="button" disabled={rows.length >= 20} onClick={() => update([...rows, ''])}>Agregar otra fecha</button>
+    <label className="workshop-times-label">Horarios disponibles del taller
+      <textarea name="workshopTimes" value={times} onChange={onChange} rows={3} maxLength={1220} placeholder={'AM\nPM'} />
+    </label>
+    <p>Escribe un horario por línea, hasta 20. Se ofrecen en todas las fechas. Deja el campo vacío si basta con elegir la fecha.</p>
   </fieldset>;
 }

@@ -15,6 +15,7 @@ const initialForm = {
   stock: "",
   colors: "",
   aromas: "",
+    workshopTimes: "",
     workshopDates: []
 };
 
@@ -52,6 +53,7 @@ function AdminProducts() {
     formData.append("stock", form.stock);
     formData.append("colors", JSON.stringify(optionsFromText(form.colors)));
     formData.append("aromas", JSON.stringify(optionsFromText(form.aromas)));
+    formData.append("workshopTimes", JSON.stringify(form.category === "Talleres" ? optionsFromText(form.workshopTimes) : []));
     formData.append("workshopDates", JSON.stringify(form.category === "Talleres" ? form.workshopDates : []));
     appendProductPhotos(formData, photos);
 
@@ -177,7 +179,7 @@ function AdminProducts() {
           />
         </label>
 
-        {form.category === "Talleres" && <WorkshopDatesFields dates={form.workshopDates} onChange={handleChange} disabled={uploading} />}
+        {form.category === "Talleres" && <WorkshopDatesFields dates={form.workshopDates} times={form.workshopTimes} onChange={handleChange} disabled={uploading} />}
         <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={uploading} />
         <ProductImagesInput photos={photos} onChange={setPhotos} disabled={uploading} />
 

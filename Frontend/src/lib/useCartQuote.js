@@ -5,8 +5,8 @@ const storageKey = 'malfi_coupon';
 export function clearSavedCoupon() {
   try { sessionStorage.removeItem(storageKey); } catch { /* Storage may be unavailable. */ }
 }
-export const orderLines = items => items.map(({ id, quantity, color, aroma, workshopDate }) =>
-  ({ id, quantity, color: color || '', aroma: aroma || '', workshopDate: workshopDate || '' }));
+export const orderLines = items => items.map(({ id, quantity, color, aroma, workshopDate, workshopTime }) =>
+  ({ id, quantity, color: color || '', aroma: aroma || '', workshopDate: workshopDate || '', ...(workshopTime ? { workshopTime } : {}) }));
 
 export function useCartQuote(items) {
   const [code, setCode] = useState(() => {

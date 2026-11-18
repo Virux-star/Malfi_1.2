@@ -7,3 +7,5 @@
 .workshop-dates-fields button{padding:.65rem .9rem;border:1px solid #bfae9d;background:#faf8f5;color:#49382e;cursor:pointer}
 .workshop-dates-fields button:disabled{opacity:.5;cursor:not-allowed}
 .workshop-dates-fields button:focus-visible{outline:2px solid #92745f;outline-offset:3px}
+.workshop-times-label{display:grid;gap:.4rem;margin-top:1.25rem}
+.workshop-times-label textarea{font:inherit;padding:.7rem;max-width:100%;resize:vertical}

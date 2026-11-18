@@ -37,7 +37,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
     const provider=req.body.paymentProvider||'webpay';
     if (!['webpay','mercadopago','flow'].includes(provider)) throw fail('Elige un medio de pago válido.',400);
     // Preserve fingerprints for existing carts; include the date only when selected.
-    const fingerprint=digest(JSON.stringify({customer,items:items.map(i=>({id:i.id,quantity:i.quantity,...(i.color||i.aroma?{color:i.color,aroma:i.aroma}:{}),...(i.workshopDate?{workshopDate:i.workshopDate}:{})})),termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{}),...(code?{couponCode:code}:{})}));
+    const fingerprint=digest(JSON.stringify({customer,items:items.map(i=>({id:i.id,quantity:i.quantity,...(i.color||i.aroma?{color:i.color,aroma:i.aroma}:{}),...(i.workshopDate?{workshopDate:i.workshopDate}:{}),...(i.workshopTime?{workshopTime:i.workshopTime}:{})})),termsVersion:req.body.termsVersion,...(provider!=='webpay'?{provider}:{}),...(pickup?{deliveryMethod}:{}),...(code?{couponCode:code}:{})}));
     const token=orderToken(key,config);
     const client=await pool.connect();
     let order;
@@ -70,10 +70,10 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
         for (const item of quote.items) {
           await client.query('UPDATE products SET reserved_stock=reserved_stock+$1 WHERE id=$2',[item.quantity,item.id]);
           await client.query(`INSERT INTO order_items(order_id,product_id,product_name,unit_price_clp,quantity,line_total_clp,
-            selected_color,selected_aroma,selected_workshop_date,original_price_clp,promotion_name)
-            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            selected_color,selected_aroma,selected_workshop_date,selected_workshop_time,original_price_clp,promotion_name)
+            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
             [order.id,item.id,item.name,item.price,item.quantity,item.line_total,item.color||null,item.aroma||null,
-              item.workshopDate||null,item.originalPrice,item.promotionName]);
+              item.workshopDate||null,item.workshopTime||null,item.originalPrice,item.promotionName]);
         }
       }
       await client.query('COMMIT');
@@ -108,7 +108,7 @@ export function registerCustomerPayments(app,pool,requireAdmin,config,tx,mpClien
       if(p)p={...p,provider:'webpay'};
       canPay=Boolean(payable&&(!p||p.state==='failed'||(p.state==='created'&&Date.now()-new Date(p.created_at)<4*60_000)));
     }
-    const items=(await pool.query('SELECT id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma,selected_workshop_date FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
+    const items=(await pool.query('SELECT id,product_id,product_name,unit_price_clp,quantity,line_total_clp,selected_color,selected_aroma,selected_workshop_date,selected_workshop_time FROM order_items WHERE order_id=$1 ORDER BY id',[o.id])).rows;
     res.json({id:o.id,status:o.status,paymentStatus:o.payment_status,mode:o.payment_mode,total:Number(o.total_clp),subtotal:Number(o.subtotal_clp),discount:Number(o.discount_clp),couponCode:o.coupon_code,shipping:Number(o.shipping_clp),carrier:o.carrier,comuna:o.shipping_comuna,
       deliveryDaysMin:o.delivery_days_min,deliveryDaysMax:o.delivery_days_max,createdAt:o.created_at,paidAt:o.paid_at,expiresAt:o.expires_at,trackingUrl:o.tracking_url,trackingNumber:o.tracking_number,
       deliveryMethod:o.delivery_method,pickupAddress:o.delivery_method==='pickup'?`${o.shipping_address}, ${o.shipping_comuna}`:null,

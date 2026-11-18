@@ -65,3 +65,19 @@ test('la cantidad de insumos es entera, positiva y limitada por el stock compart
   assert.equal(unitQuantity(3.8, 12), 3);
   assert.deepEqual(addCartItem([], supply, 1, { workshopDate: '2099-01-01' }), []);
 });
+
+test('AM y PM tienen líneas separadas para una fecha y conservan el límite compartido', () => {
+  const date = '2099-08-01';
+  const workshop = {id: 2, name: 'Taller', category:'Talleres', price:25000, stock:4,
+    workshop_dates:[date], workshop_times:['AM', 'PM']};
+  const add = (rows, n, workshopTime) => addCartItem(rows, workshop, n, {workshopDate:date, workshopTime});
+  assert.deepEqual(add([], 1, ''), []);
+  assert.deepEqual(add([], 1, 'Noche'), []);
+  let rows = add([], 1, 'AM');
+  rows = add(rows, 1, 'AM');
+  rows = add(rows, 4, 'PM');
+  assert.deepEqual(rows.map(i => [i.workshopTime, i.quantity]), [['AM', 2], ['PM', 2]]);
+  assert.deepEqual(restoreCart(JSON.parse(JSON.stringify(rows))), rows);
+  const left = subtractPurchased(rows, [{product_id:2, selected_workshop_date:date, selected_workshop_time:'PM', quantity:2}]);
+  assert.deepEqual(left, [rows[0]]);
+});

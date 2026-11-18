@@ -36,7 +36,7 @@ test('el servidor exige una fecha vigente ofrecida por el taller y rechaza fecha
 });
 
 test('los correos al cliente y al negocio conservan la fecha de cada taller sin cambiar el día', () => {
-  const item = { product_name: 'Taller QA', selected_workshop_date: future, quantity: 2, unit_price_clp: 25000, line_total_clp: 50000 };
+  const item = { product_name: 'Taller QA', selected_workshop_date: future, selected_workshop_time: 'PM', quantity: 2, unit_price_clp: 25000, line_total_clp: 50000 };
   const date = formatWorkshopDate(future);
   assert.ok(orderItemDescription(item).includes('Fecha: ' + date));
   const order = { id: 1, checkout_key: 'qa', payment_mode: 'integration', customer_name: 'QA', delivery_days_max: 2,
@@ -45,8 +45,21 @@ test('los correos al cliente y al negocio conservan la fecha de cada taller sin 
   for (const kind of ['payment_confirmed', 'admin_new_order']) {
     const original = orderEmail(kind, order, [item], config);
     for (const email of [original, compactOrderEmail(kind, order, [item], config, original.text)]) {
+      assert.ok(email.text.includes('Horario: PM'));
+      assert.ok(email.html.includes('Horario: PM'));
       assert.ok(email.text.includes('Fecha: ' + date));
       assert.ok(email.html.includes('Fecha: ' + date));
     }
   }
+});
+
+test('el horario debe pertenecer al taller y estar bien formado', () => {
+  const line = {id: 1, quantity: 1, workshopDate: future, workshopTime: ' am '};
+  const [normalized] = normalizeCartLines([line]);
+  const product = {name: 'Taller', category: 'Talleres', workshop_dates: [future], workshop_times: ['AM', 'PM']};
+  assert.equal(selectedOptions(product, normalized).workshopTime, 'AM');
+  assert.throws(() => normalizeCartLines([line, {...line, workshopTime:'AM'}]));
+  for (const time of [{}, 'a'.repeat(61), 'AM\nPM']) assert.throws(() => normalizeCartLines([{...line, workshopTime:time}]));
+  assert.throws(() => selectedOptions({category:'Insumos'}, {workshopTime:'AM'}), {status:409});
+  assert.throws(() => selectedOptions({...product, workshop_times:[]}, normalized), {status:409});
 });

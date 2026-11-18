@@ -82,6 +82,7 @@ function CartPage() {
 
                     {(item.color || item.aroma) && <p>{[item.color && ("Color: " + item.color), item.aroma && ("Aroma: " + item.aroma)].filter(Boolean).join(" · ")}</p>}
                     {item.workshopDate && <p>Fecha: {formatWorkshopDate(item.workshopDate)}</p>}
+                    {item.workshopTime && <p>Horario: {item.workshopTime}</p>}
                     <p className="cart-unit-price">
                       {reviewed.has(item.key) && <SalePrice price={reviewed.get(item.key).price} originalPrice={reviewed.get(item.key).originalPrice}/>}
                     </p>
@@ -103,7 +104,7 @@ function CartPage() {
                       </button>
 
                       <QuantityInput max={Math.max(1, item.stock - productQuantity(items, item.id) + item.quantity)}
-                        aria-label={`Cantidad de ${item.name}${item.workshopDate ? ' para el ' + formatWorkshopDate(item.workshopDate) : ''}`}
+                        aria-label={`Cantidad de ${item.name}${item.workshopDate ? ' para el ' + formatWorkshopDate(item.workshopDate) : ''}${item.workshopTime ? ' · ' + item.workshopTime : ''}`}
                         value={item.quantity} onChange={amount => updateQuantity(item.key, amount)} />
 
                       <button
