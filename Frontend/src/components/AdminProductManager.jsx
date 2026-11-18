@@ -37,6 +37,7 @@ function AdminProductManager() {
     stock: "",
     colors: "",
     aromas: "",
+    sandColors: "",
     workshopTimes: "",
     workshopDates: []
   });
@@ -90,6 +91,7 @@ function AdminProductManager() {
       category: product.category,
       stock: String(product.stock),
       colors: (product.colors || []).join("\n"),
+      sandColors: (product.sand_colors || []).join("\n"),
       aromas: (product.aromas || []).join("\n"),
       workshopTimes: (product.workshop_times || []).join("\n"),
       workshopDates: product.workshop_dates || []
@@ -146,6 +148,7 @@ function AdminProductManager() {
     formData.append("stock", form.stock);
 
     formData.append("colors", JSON.stringify(optionsFromText(form.colors)));
+    formData.append("sandColors", JSON.stringify(optionsFromText(form.sandColors)));
     formData.append("aromas", JSON.stringify(optionsFromText(form.aromas)));
     formData.append("workshopTimes", JSON.stringify(form.category === "Talleres" ? optionsFromText(form.workshopTimes) : []));
     formData.append("workshopDates", JSON.stringify(form.category === "Talleres" ? form.workshopDates : []));
@@ -360,7 +363,7 @@ function AdminProductManager() {
               </label>
 
             {form.category === "Talleres" && <WorkshopDatesFields dates={form.workshopDates} times={form.workshopTimes} onChange={handleChange} disabled={saving} />}
-        <ProductOptionsFields colors={form.colors} aromas={form.aromas} onChange={handleChange} disabled={saving} />
+        <ProductOptionsFields colors={form.colors} aromas={form.aromas} sandColors={form.sandColors} onChange={handleChange} disabled={saving} />
             <ProductImagesInput photos={photos} onChange={setPhotos} disabled={saving} />
 
             <div className="manager-actions">

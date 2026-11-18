@@ -15,6 +15,7 @@ function ProductDetail({ productId }) {
 
   const [quantity, setQuantity] = useState(1);
   const [color, setColor] = useState("");
+  const [sandColor, setSandColor] = useState("");
   const [aroma, setAroma] = useState("");
   const [workshopDate, setWorkshopDate] = useState("");
   const [workshopTime, setWorkshopTime] = useState("");
@@ -29,7 +30,7 @@ function handleAddToCart() {
   if (!selectionReady) {
     setCartMessage("Selecciona las opciones de tu producto."); return;
   }
-  const key = cartKey({ id: product.id, color, aroma, workshopDate, workshopTime });
+  const key = cartKey({ id: product.id, color, aroma, sandColor, workshopDate, workshopTime });
   if (items.length >= 30 && !items.some(item => item.key === key)) {
     setCartMessage("El carrito admite hasta 30 selecciones distintas."); return;
   }
@@ -46,7 +47,7 @@ function handleAddToCart() {
 
   const amount = unitQuantity(quantity, availableToAdd);
 
-  addToCart(product, amount, { color, aroma, workshopDate, workshopTime });
+  addToCart(product, amount, { color, aroma, sandColor, workshopDate, workshopTime });
   setQuantity(1);
 
   setCartMessage(
@@ -61,7 +62,7 @@ function handleAddToCart() {
       setLoading(true);
       setError("");
       setProduct(null);
-      setColor(""); setAroma(""); setWorkshopDate(""); setWorkshopTime(""); setPhotoIndex(0); setQuantity(1); setCartMessage("");
+      setColor(""); setSandColor(""); setAroma(""); setWorkshopDate(""); setWorkshopTime(""); setPhotoIndex(0); setQuantity(1); setCartMessage("");
 
       try {
         const response = await fetch(
@@ -100,7 +101,8 @@ function handleAddToCart() {
   const availableToAdd = product ? Math.max(0, Math.min(product.stock, 100) - productQuantity(items, product.id)) : 0;
   const isWorkshop = product?.category === "Talleres";
   const selectionReady = (!isWorkshop || !!product?.workshop_dates?.includes(workshopDate)) &&
-    (!product?.workshop_times?.length || product.workshop_times.includes(workshopTime)) && (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma);
+    (!product?.workshop_times?.length || product.workshop_times.includes(workshopTime)) && (!product?.colors?.length || !!color) && (!product?.aromas?.length || !!aroma) &&
+    (!product?.sand_colors?.length || product.sand_colors.includes(sandColor));
 
   return (
     <main className="product-detail-page">
@@ -187,6 +189,12 @@ function handleAddToCart() {
                   <select value={color} onChange={event => { setColor(event.target.value); setCartMessage(''); }}>
                     <option value="">Selecciona un color</option>
                     {product.colors.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>}
+                {product.sand_colors?.length > 0 && <label>Color de vela arena
+                  <select value={sandColor} onChange={event => { setSandColor(event.target.value); setCartMessage(''); }}>
+                    <option value="">Selecciona un color de vela arena</option>
+                    {product.sand_colors.map(option => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </label>}
                 {product.aromas?.length > 0 && <label>Aroma

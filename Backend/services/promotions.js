@@ -51,7 +51,7 @@ export async function catalogPrices(db, products) {
 
 export async function priceCart(db, items, code, { reserve = false } = {}) {
   const quantities = quantityByProduct(items);
-  const result = await db.query(`SELECT id,name,category,price,stock,reserved_stock,colors,aromas,workshop_dates,workshop_times,image_url,image_gallery
+  const result = await db.query(`SELECT id,name,category,price,stock,reserved_stock,colors,aromas,sand_colors,workshop_dates,workshop_times,image_url,image_gallery
     FROM products WHERE active AND id=ANY($1::int[]) ORDER BY id ${reserve ? 'FOR UPDATE' : ''}`, [[...quantities.keys()]]);
   const byId = new Map(result.rows.map(row => [row.id, publicProduct(row)]));
 

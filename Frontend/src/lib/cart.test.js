@@ -81,3 +81,16 @@ test('AM y PM tienen líneas separadas para una fecha y conservan el límite com
   const left = subtractPurchased(rows, [{product_id:2, selected_workshop_date:date, selected_workshop_time:'PM', quantity:2}]);
   assert.deepEqual(left, [rows[0]]);
 });
+
+test('dos colores de vela arena mantienen sus cantidades al recargar y al completar el pedido', () => {
+  const candle = {...product, sand_colors:['Rosa', 'Celeste'], stock:4};
+  const options = {color:'Blanco', aroma:'Lavanda'};
+  assert.deepEqual(addCartItem([], candle, 1, options), []);
+  assert.deepEqual(addCartItem([], candle, 1, {...options, sandColor:'Verde'}), []);
+  let rows = addCartItem([], candle, 2, {...options, sandColor:'Rosa'});
+  rows = addCartItem(rows, candle, 3, {...options, sandColor:'Celeste'});
+  assert.deepEqual(rows.map(item => [item.sandColor, item.quantity]), [['Rosa', 2], ['Celeste', 2]]);
+  assert.deepEqual(restoreCart(JSON.parse(JSON.stringify(rows))), rows);
+  const paid = {id:42, product_id:product.id, selected_color:'Blanco', selected_aroma:'Lavanda', selected_sand_color:'Rosa', quantity:2};
+  assert.deepEqual(subtractPurchased(rows, [paid]), [rows[1]]);
+});

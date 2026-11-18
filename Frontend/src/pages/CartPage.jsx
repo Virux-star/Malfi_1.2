@@ -1,3 +1,4 @@
+import SelectedProductOptions from '../components/SelectedProductOptions';
 import { formatWorkshopDate } from '../lib/workshops';
 import QuantityInput from '../components/QuantityInput';
 import { useState } from 'react';
@@ -80,7 +81,7 @@ function CartPage() {
                       <h2>{item.name}</h2>
                     </a>
 
-                    {(item.color || item.aroma) && <p>{[item.color && ("Color: " + item.color), item.aroma && ("Aroma: " + item.aroma)].filter(Boolean).join(" · ")}</p>}
+                    <SelectedProductOptions item={item} />
                     {item.workshopDate && <p>Fecha: {formatWorkshopDate(item.workshopDate)}</p>}
                     {item.workshopTime && <p>Horario: {item.workshopTime}</p>}
                     <p className="cart-unit-price">

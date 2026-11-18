@@ -9,7 +9,7 @@ import { workshopDateList, chileToday } from '../services/workshops.js';
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const validId = id => /^[1-9]\d*$/.test(id) && Number(id) <= 2147483647;
-const fields = 'id,name,description,price,category,stock,reserved_stock,image_url,image_gallery,colors,aromas,workshop_dates,workshop_times,active,created_at';
+const fields = 'id,name,description,price,category,stock,reserved_stock,image_url,image_gallery,colors,aromas,workshop_dates,workshop_times,sand_colors,active,created_at';
 
 function productForm(body) {
   const name = String(body.name ?? '').trim(), description = String(body.description ?? '').trim();
@@ -73,6 +73,7 @@ export function registerProductRoutes(app, pool, requireAdmin, uploadLimiter, im
     }
     const colors = optionList(req.body.colors ?? existing?.colors, 'colores');
     const aromas = optionList(req.body.aromas ?? existing?.aromas, 'aromas');
+    const sandColors = editing && req.body.sandColors == null ? null : optionList(req.body.sandColors, 'colores de vela arena');
     const times = form.category === 'Talleres' ? optionList(req.body.workshopTimes ?? existing?.workshop_times, 'horarios') : [];
     const dates = form.category === 'Talleres' ? workshopDateList(req.body.workshopDates ?? existing?.workshop_dates) : [];
     if (form.category === 'Talleres' && (!dates.length || (form.stock > 0 && !dates.some(date => date >= chileToday())))) {
@@ -107,10 +108,10 @@ export function registerProductRoutes(app, pool, requireAdmin, uploadLimiter, im
         if (!current || JSON.stringify(current.image_gallery) !== JSON.stringify(existing.image_gallery)) throw fail('El producto cambió. Actualiza la lista antes de guardar.', 409);
         if (form.stock < current.reserved_stock) throw fail('El stock no puede ser menor que las unidades reservadas.', 409);
       }
-      const values = [form.name, form.description, form.price, form.category, form.stock, gallery[0].url, gallery[0].public_id, colors, aromas, JSON.stringify(gallery), dates, times];
+      const values = [form.name, form.description, form.price, form.category, form.stock, gallery[0].url, gallery[0].public_id, colors, aromas, JSON.stringify(gallery), dates, times, sandColors];
       const query = editing
-        ? 'UPDATE products SET name=$1,description=$2,price=$3,category=$4,stock=$5,image_url=$6,image_public_id=$7,colors=$8,aromas=$9,image_gallery=$10::jsonb,workshop_dates=$11,workshop_times=$12 WHERE id=$13 RETURNING ' + fields
-        : 'INSERT INTO products(name,description,price,category,stock,image_url,image_public_id,colors,aromas,image_gallery,workshop_dates,workshop_times) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12) RETURNING ' + fields;
+        ? 'UPDATE products SET name=$1,description=$2,price=$3,category=$4,stock=$5,image_url=$6,image_public_id=$7,colors=$8,aromas=$9,image_gallery=$10::jsonb,workshop_dates=$11,workshop_times=$12,sand_colors=COALESCE($13,sand_colors) WHERE id=$14 RETURNING ' + fields
+        : 'INSERT INTO products(name,description,price,category,stock,image_url,image_public_id,colors,aromas,image_gallery,workshop_dates,workshop_times,sand_colors) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13) RETURNING ' + fields;
       if (editing) values.push(req.params.id);
       const result = await db.query(query, values);
       committing = true;
